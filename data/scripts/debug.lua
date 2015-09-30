@@ -1,0 +1,42 @@
+dofile "fps.lua"
+
+-- font.write should take a parameter if the text should transform with camera.
+
+function debug_view()
+
+   fps.update(dt)
+   
+   font.write("FPS: " .. tostring(fps.count), vec2.new(10, 30), false)
+   font.write("# Entities: " .. tostring(es.getNrOfEntities()), vec2.new(10, 10), false)
+     
+end
+
+-- Create a number of sprites for performance testing.
+function debug_sprites()
+
+   local sizex, sizey = 50, 50
+   local count = 1000
+   local circles = 8
+
+   for i=1,count,1 do
+
+      -- Calculate position.
+      local norm = ((circles * 2 * 3.14) / count) * i
+      local circlei = norm / (2 * 3.14)
+      local x = math.cos(norm) * (sizex + 50) * circlei + 50 + 250
+      local y = math.sin(norm) * (sizey + 50) * circlei + 50 + 250
+
+      -- Calculate color.
+      local n = i / count
+      local h = n * 360
+      local s = math.max(n, 0.8)
+      local v = 1
+      local hsv = color.new(h,s,v,1)
+
+      local e = Enemy(wheelTexture, vec2.new(x, y))
+      e:setColor(color.toRGBFromHSV(hsv))
+      
+   end    
+
+end
+
