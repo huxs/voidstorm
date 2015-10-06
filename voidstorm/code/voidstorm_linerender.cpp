@@ -11,6 +11,7 @@ LineRenderer::LineRenderer(dcfx::Context* _renderCtx)
 
     vertexDecl.begin();
     vertexDecl.add(0, 3, dcfx::AttributeType::FLOAT, false);
+    vertexDecl.add(1, 4, dcfx::AttributeType::FLOAT, false);
     vertexDecl.end();
 
     vertexBuffer = renderCtx->createVertexBuffer(
@@ -27,10 +28,10 @@ LineRenderer::~LineRenderer()
     renderCtx->deleteBuffer(vertexBuffer);
 }
 
-void LineRenderer::add(const glm::vec2& from, const glm::vec2& to)
+void LineRenderer::add(const glm::vec2& from, const glm::vec2& to, const glm::vec4& color)
 {
-    vertices[vertexCount++] = { glm::vec3(from.x, from.y, 0) };
-    vertices[vertexCount++] = { glm::vec3(to.x, to.y, 0) };
+    vertices[vertexCount++] = { glm::vec3(from.x, from.y, 0), color };
+    vertices[vertexCount++] = { glm::vec3(to.x, to.y, 0), color };
 }
 
 void LineRenderer::dispatch(int view)
@@ -50,7 +51,7 @@ void LineRenderer::reset()
    vertexCount = 0;
 }
 
-void LineRenderer::drawCircle(const glm::vec2& pos, float radius)
+void LineRenderer::drawCircle(const glm::vec2& pos, float radius, const glm::vec4& color)
 {
     static const int NumberOfPoints = 12;
     static const float DeltaAngle = (2 * 3.14f) / NumberOfPoints;
@@ -66,35 +67,35 @@ void LineRenderer::drawCircle(const glm::vec2& pos, float radius)
     {
 	glm::vec2 newPos = glm::vec2(cos(angle) * radius, sin(angle) * radius) + pos;
 
-	add(oldPos, newPos);
+	add(oldPos, newPos, color);
 
 	oldPos = newPos;
 	angle += DeltaAngle;
     }
 
-    add(oldPos, startPos);
+    add(oldPos, startPos, color);
 }
 
-void LineRenderer::drawAABB(const AABB& aabb)
+void LineRenderer::drawAABB(const AABB& aabb, const glm::vec4& color)
 {
     glm::vec2 a = aabb.lower;
     glm::vec2 b = aabb.lower + glm::vec2(0, aabb.upper.y - aabb.lower.y);
     glm::vec2 c = aabb.upper;
     glm::vec2 d = aabb.lower + glm::vec2(aabb.upper.x - aabb.lower.x, 0);
 
-    add(a, b);
-    add(b, c);
-    add(c, d);
-    add(d, a);
+    add(a, b, color);
+    add(b, c, color);
+    add(c, d, color);
+    add(d, a, color);
 }
 
-void LineRenderer::drawPolygon(const PolygonShape& shape)
+void LineRenderer::drawPolygon(const PolygonShape& shape, const glm::vec4& color)
 {
     for(int i = 0; i < shape.count; ++i)
     {
 	glm::vec2 a = shape.vertices[i];
 	glm::vec2 b = i + 1 < shape.count ? shape.vertices[i+1] : shape.vertices[0];
 
-	add(a, b);
+	add(a, b, color);
     }
 }

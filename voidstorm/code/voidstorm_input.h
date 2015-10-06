@@ -28,6 +28,11 @@ struct ControllerState
 
 struct KeyboardState
 {
+    KeyboardState()
+	{
+	    memset(keys, 0, sizeof(uint8_t) * SDL_NUM_SCANCODES);
+	}
+    
     uint8_t keys[SDL_NUM_SCANCODES];
 };
 
@@ -54,8 +59,10 @@ inline bool isKeyDown(SDL_Scancode key)
 
 inline bool isKeyDownAndReleased(GameInput* gameInput, SDL_Scancode key)
 {
-    if(SDL_GetKeyboardState(NULL)[key])
-	if (SDL_GetKeyboardState(NULL)[key] != gameInput->previousKeyboard->keys[key])
+    uint8_t isDown = gameInput->currentKeyboard->keys[key];
+    
+    if(isDown)
+	if (!gameInput->previousKeyboard->keys[key])
 	{
 	    return true;
 	}

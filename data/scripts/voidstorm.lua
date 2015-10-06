@@ -1,25 +1,52 @@
-dofile "debug.lua"
-dofile "map.lua"
+
+function GameInitialize()
+
+   print("GameInitialized")
+
+   -- Maps Entities to Sprites.
+   sprites = {}
+
+   -- Load sprite definitions.
+   dofile "sprite.lua"
+
+   -- Load Concretes.
+   Bullet = class(MovableCollidableSprite)
+   Player = class(MovableCollidableSprite)
+   Enemy = class(MovableCollidableSprite)
+   Worm = class(MovableCollidableSprite)
+   WormPart = class(CollidableSprite)
+
+   Map = {}
+   Map.enemies = {}
+
+   -- Collision flags.
+   type = {}
+   type.player = bit.lshift(1, 0) 
+   type.playerbullet = bit.lshift(1, 1)
+   type.enemy = bit.lshift(1, 2)
+   type.enemybullet = bit.lshift(1, 3)
+   type.wall = bit.lshift(1, 4)
+
+   dofile "effect.lua"
+   dofile "debug.lua"
+   dofile "map.lua"
+
+   -- Preload the texture to be used.
+   wallTexture = texture.new("pixel.dds")
+   boulderTexture = texture.new("boulder.dds")
+   wheelTexture = texture.new("wheel.dds")
+   diamondTexture = texture.new("diamond.dds")
+
+   -- Initialize all the entities in the map.
+   Map.start();
+
+   voidstorm.setPostProcessParams(1.9, 1.1, 1.0)
+
+
+
+end
 
 function GameUpdateAndRender()
-
-   if initialized == false then
-
-      -- Preload the texture to be used.
-      boulderTexture = texture.new("boulder.dds")
-      wheelTexture = texture.new("wheel.dds")
-      diamondTexture = texture.new("diamond.dds")
-
-      -- Initialize all the entities in the map.
-      Map.start();
-
-      --debug_sprites()
-
-      voidstorm.setPostProcessParams(1.9, 1.1, 1.0)
-
-      initialized = true
-      
-   end
 
    debug_view()
    

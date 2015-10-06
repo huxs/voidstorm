@@ -1,11 +1,8 @@
-// TODO: Let the texture manager decide which file to load based of the name.
-
 Texture* TextureManager::load(const char* name)
 {
     Texture* result = textures.lookup(name);
     if(!result)
     {
-	// TODO: Transient client memory allocation.
 	char path[150];
 	strcpy(path, VOIDSTORM_TEXTURE_DIRECTORY);
 	strcat(path, name);
@@ -18,7 +15,6 @@ Texture* TextureManager::load(const char* name)
 	    size_t size = (size_t)SDL_RWtell(handle);
 	    SDL_RWseek(handle, 0, SEEK_SET);
 
-	    // TODO: Transient client memory allocation.
 	    char* ptr = (char*)renderCtx->frameAlloc(size);
 	    
 	    size_t read = SDL_RWread(handle, ptr, size, 1);

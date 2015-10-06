@@ -46,7 +46,7 @@ endif()
 
 # MSVC
 if(MSVC)
-  add_definitions(/fp:fast)
+  #add_definitions(/fp:fast)
   add_definitions(-D_SCL_SECURE_NO_WARNINGS=1) # Disable warnings for calling unsafe methods in the C++ Standard Library
   add_definitions(-D_SECURE_SCL=0)             # Disable Checked iterators
   add_definitions(-D_HAS_EXCEPTIONS=0)         # Disable exceptions in runtime library

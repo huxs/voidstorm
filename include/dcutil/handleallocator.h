@@ -19,6 +19,7 @@ namespace dcutil
 		for (uint16_t i = 0; i < size; ++i)
 		{
 		    m_handles[i] = i;
+		    m_recylced[i] = 0;
 		}
 	    }
 	

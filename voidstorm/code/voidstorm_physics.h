@@ -7,11 +7,8 @@ struct Contact
     Contact* next;
 };
 
-class DbvtNode
+struct DbvtNode
 {
-public:
-    friend class Dbvt;   
-private:
     DbvtNode(Entity _entity, const AABB& _aabb)
 	    :
 	    entity(_entity),

@@ -1,6 +1,7 @@
 #pragma once
 
 #define VOIDSTORM_MAX_POLYGON_VERTICES 1024
+#define VOIDSTORM_EPSILON 0.000001
 
 enum ShapeType
 {

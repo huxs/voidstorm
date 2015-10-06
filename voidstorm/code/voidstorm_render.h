@@ -18,7 +18,7 @@ struct World;
 class Renderer
 {
 public:
-    Renderer(HeapAllocator* heap, dcutil::Stack* stack);
+    Renderer(HeapAllocator* heap, dcutil::Stack* perm, dcutil::Stack* world);
     ~Renderer();
 
     void setResolution(glm::ivec2 resolution);

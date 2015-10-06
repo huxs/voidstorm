@@ -80,7 +80,6 @@ int ComponentMap::lookup(Entity entity)
     return value;
 }
 
-
 void TransformManager::allocate(uint32_t count)
 {
     size_t size = count * (sizeof(Entity) + sizeof(glm::vec2) + sizeof(float) + sizeof(float) + sizeof(float));
@@ -416,7 +415,7 @@ void CollisionManager::setRadius(Instance i, float radius)
 
 void SpriteManager::allocate(uint32_t count)
 {
-    size_t size = count * (sizeof(Entity) + sizeof(glm::vec4) + sizeof(Texture*));
+    size_t size = count * (sizeof(Entity) + sizeof(glm::vec4) + sizeof(Texture*) + sizeof(glm::vec2) + sizeof(glm::vec2));
     
     data.data  = stack->alloc(size);
     data.count = count;
@@ -425,6 +424,8 @@ void SpriteManager::allocate(uint32_t count)
     data.entities = (Entity*)data.data;
     data.color = (glm::vec4*)(data.entities + count);
     data.texture = (Texture**)(data.color + count);
+    data.size = (glm::vec2*)(data.texture + count);
+    data.origin = (glm::vec2*)(data.size + count);
 };
 
 SpriteManager::Instance SpriteManager::create(Entity e)
@@ -435,6 +436,7 @@ SpriteManager::Instance SpriteManager::create(Entity e)
     data.entities[compIndex] = e;
     data.color[compIndex] = glm::vec4(1, 1, 1, 1);
     data.texture[compIndex] = nullptr;
+    data.origin[compIndex] = glm::vec2(0.5, 0.5);
 
     //PRINT("SpriteComponent created for entity I:%d - G:%d!\n", e.index(), e.generation());
     //PRINT("CompId: %d\n", compIndex);
@@ -455,7 +457,9 @@ void SpriteManager::destroy(SpriteManager::Instance i)
     data.entities[i.index] = data.entities[lastIndex];
     data.texture[i.index] = data.texture[lastIndex];
     data.color[i.index] = data.color[lastIndex];
-
+    data.size[i.index] = data.size[lastIndex];
+    data.origin[i.index] = data.origin[lastIndex];
+    
     map.remove(e);
     map.remove(last_e);
     map.add(stack, last_e, i.index);
@@ -465,4 +469,20 @@ void SpriteManager::destroy(SpriteManager::Instance i)
     //PRINT("SpriteComponent destroyed for entity I:%d - G:%d!\n", e.index(), e.generation());
     //PRINT("CompId: %d\n", i.index);
     //PRINT("Components used: %d\n", data.used - 1);
+}
+
+void World::reset()
+{
+    entities.reset();
+    
+    transforms.data.used = 1;
+    transforms.map = ComponentMap();
+    physics.data.used = 1;
+    physics.map = ComponentMap();
+    collisions.data.used = 1;
+    collisions.map = ComponentMap();
+    responders.data.used = 1;
+    responders.map = ComponentMap();
+    sprites.data.used = 1;
+    sprites.map = ComponentMap();
 }

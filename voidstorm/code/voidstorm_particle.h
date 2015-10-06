@@ -6,6 +6,8 @@ class ParticleEngine
 {
 public:
     ParticleEngine(dcutil::Stack* stack, dcfx::Context* renderCtx, SpriteBatch* sb);
+
+    void reset();
     
     ParticleHandle createHandle(ParticleEffectDescription* desc);
     void deleteHandle(ParticleHandle handle);

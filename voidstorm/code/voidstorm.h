@@ -1,55 +1,34 @@
 #pragma once
 
 /*
-  TODO:
-
-  Project:
-  Fix opengl_glx for linux compat.
+  TODO (daniel):
+  - opengl_glx for linux compabillity.
+  - font-writes from lua is currently only affected by the viewport and not the camera
+  and they are not batched properly.
+  - camera entities would be pretty cool.
+  - Optimization: Following of entities is very slow in lua 5x128 follow entities -> 20 ms (debug)
+  do the math in C instead.
+  - Optimization: Shapes are allocated in runtime, adding and removing shapes is a frequent operation
+  and should not call to OS.
+  - Optimization: SIMD on spritebatching.
+  - Varying particle buffers. Currently they have a fixed amount.
+  - Set the source rectangle for a sprite.
+  - Add shaders and fonts to resource manager.
+  - Better debug view. Add voidstorm_debug.cpp. / Tweak debug variables from lua.
   
+  TODO (daniel): *Potential Future*
+  - Generate a particle star system in the background.
+  - CRT-Emulation mode.
+  - Android (Touch Input etc..)
+  - Polygon-Particle / Splines / Swirling particles.
+  - Concave polygons (Multple convex per entity..)
+  - Audio!
+  - Menus!
   
-  Data path
-  Parenting entities
-  CRT-Emulation!
-  Stary-Background!
-
-  Improvments:
-  - Shapes are heap allocated in runtime, probely not the best idea
-  
-  Reallocation:
-  - Components
-  - Lines
-  - Particle buffers
-  - Sprites
-  
-  Internal build option in premake
-  DebugView in C.voidstorm_debug
-  
-  BugList:
-  - Shooting continues after releasing the right stick
-
-  FeaturesToAdd:
-  - Mouse & Keyboard.
-  - Touch Input.
-
-  Sprite:
-  Origin (If we want rotate around another point then sprite center)
-  Source (If we want spritessheets)
-
-  Future:
-  - PolygonVsPolygon
-  - Multiple shapes per entity
-  - ODE
-  - Different simulation body for particles (Swirling etc)
-  - Polygon-Particles?
-
-  -  RESOURCE MANAGER (voidstorm_resources)
-     ReferenceCounting? Ref<T>
-     Shaders
-     Fonts
-   
-  -  AUDIO
-  -  MENUS
-
+  TODO (daniel): *BUGS*
+  - Shooting continues after releasing the right stick sometimes..
+  - Random crash release mode. Moar testing..
+    
 */
 
 #include <SDL2/SDL.h>
@@ -83,8 +62,7 @@
 
 extern HeapAllocator* g_allocator;
 
-// TODO: Rename to engine context.
-struct GameState
+struct VoidstormContext
 {
     Renderer* renderer;
     PhysicsWorld* physics;

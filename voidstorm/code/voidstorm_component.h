@@ -127,7 +127,7 @@ struct CollisionResponderManager
 };
 
 
-class DbvtNode;
+struct DbvtNode;
 struct Contact;
 enum ShapeType;
 struct PolygonShape;
@@ -175,6 +175,7 @@ struct CollisionManager
     Instance lookup(Entity e) { return { map.lookup(e) }; };
 
     void setType(Instance i, uint32_t type) { data.type[i.index] = type; }
+    uint32_t getType(Instance i) { return data.type[i.index]; }
     void setMask(Instance i, uint32_t mask) { data.mask[i.index] = mask; }
     void setOffset(Instance i, const glm::vec2& offset) { data.shape[i.index].offset = offset; }
 
@@ -209,6 +210,8 @@ struct SpriteManager
 	Entity* entities;
 	glm::vec4* color;
 	Texture** texture;
+	glm::vec2* size;
+	glm::vec2* origin;
 		
     } data;
 
@@ -220,7 +223,9 @@ struct SpriteManager
     void setColor(Instance i, glm::vec4 color) { data.color[i.index] = color; }
     glm::vec4 getColor(Instance i) { return data.color[i.index]; }
     void setTexture(Instance i, Texture* handle) { data.texture[i.index] = handle; }
-
+    void setSize(Instance i, glm::vec2 size) { data.size[i.index] = size; }
+    void setOrigin(Instance i, glm::vec2 origin) { data.origin[i.index] = origin; }
+    
     dcutil::Stack* stack;
     ComponentMap map;
 };
@@ -236,6 +241,8 @@ struct World
 	    sprites(stack)
 	{
 	}
+
+    void reset();
 
     EntityManager entities;
     TransformManager transforms;

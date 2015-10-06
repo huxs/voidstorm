@@ -26,10 +26,13 @@ struct Controller
     int index;
 };
 
-// TODO: Add reference for these values.
+// https://msdn.microsoft.com/en-us/library/windows/desktop/ee417001%28v=vs.85%29.aspx#dead_zone
 #define XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE  7849
 #define XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE 8689
 
+// NOTE (daniel): The value represents one axis within the range (-32768 to 32767)
+// we zero out the value if within the deadzone and normalize it to 0.0 to 1.0 if outside.
+// https://wiki.libsdl.org/SDL_ControllerAxisEvent
 static float processAxis(int value, int deadzone)
 {
     float result = 0.0f;
@@ -37,7 +40,7 @@ static float processAxis(int value, int deadzone)
     if (value < -deadzone)
     {
 	if (value < -32767) value = -32767;
-					
+
 	result = ((float)(value + deadzone)) / (32767 - deadzone);
     }
     else if (value > deadzone)
@@ -62,7 +65,6 @@ static State handleEvents(ControllerState* controllerState, Controller* controll
 	case SDL_QUIT:
 	    state = State::QUIT;
 	    break;
-
 	case SDL_WINDOWEVENT:
 	{
 	    switch(event.window.event)
@@ -116,7 +118,7 @@ static State handleEvents(ControllerState* controllerState, Controller* controll
 		  break;*/
 	    }
 	}
-	    
+	break;
 	case SDL_CONTROLLERDEVICEADDED:
 	{
 	    if(controller->pad == NULL)
@@ -124,7 +126,6 @@ static State handleEvents(ControllerState* controllerState, Controller* controll
 		SDL_ControllerDeviceEvent& ev = event.cdevice;
 		controller->pad = SDL_GameControllerOpen(ev.which);
 		controller->index = ev.which;
-		PRINT("Controller added.\n");
 	    }
 	}
 	break;
@@ -136,7 +137,6 @@ static State handleEvents(ControllerState* controllerState, Controller* controll
 		SDL_GameControllerClose(controller->pad);
 		controller->pad = NULL;
 		controller->index = -1;
-		PRINT("Controller removed.\n");
 	    }
 	}
 	break;
@@ -197,18 +197,21 @@ int main(int argv, char** argc)
 	    permStackPtr + sizeof(dcutil::Stack),
 	    VOIDSTORM_APPLICATION_PERMANENT_STACK_SIZE);
 
-	HeapAllocator renderAllocator(renderSpace);	
-	Renderer* renderer = new(permanentStack->alloc(sizeof(Renderer))) Renderer(&renderAllocator, permanentStack);
-	
-	ResourceManager* resources = new(permanentStack->alloc(sizeof(ResourceManager))) ResourceManager(permanentStack, renderer->getContext());
-	PhysicsWorld* physics = new(permanentStack->alloc(sizeof(PhysicsWorld))) PhysicsWorld(permanentStack, renderer->getLineRenderer());
+	uint8_t* worldStackPtr = (uint8_t*)permStackPtr + VOIDSTORM_APPLICATION_PERMANENT_STACK_SIZE;
+	dcutil::Stack* worldStack = new(worldStackPtr) dcutil::Stack(worldStackPtr + sizeof(dcutil::Stack), VOIDSTORM_APPLICATION_PERMANENT_STACK_SIZE);
 
+	HeapAllocator renderAllocator(renderSpace);	
+	Renderer* renderer = new(permanentStack->alloc(sizeof(Renderer))) Renderer(&renderAllocator, permanentStack, worldStack);
+	
 	World* world = new(permanentStack->alloc(sizeof(World))) World(permanentStack);
 	world->transforms.allocate(VOIDSTORM_TRANSFORM_COMPONENT_COUNT);
 	world->physics.allocate(VOIDSTORM_PHYSICS_COMPONENT_COUNT);
 	world->collisions.allocate(VOIDSTORM_COLLISION_COMPONENT_COUNT);
 	world->responders.allocate(VOIDSTORM_RESPONDER_COMPONENT_COUNT);
 	world->sprites.allocate(VOIDSTORM_SPRITE_COMPONENT_COUNT);
+
+	ResourceManager* resources = new(permanentStack->alloc(sizeof(ResourceManager))) ResourceManager(permanentStack, renderer->getContext());
+	PhysicsWorld* physics = new(permanentStack->alloc(sizeof(PhysicsWorld))) PhysicsWorld(permanentStack, renderer->getLineRenderer());
 
 #ifdef VOIDSTORM_INTERNAL
 	tinystl::vector<LuaFile> luaFiles;
@@ -226,85 +229,95 @@ int main(int argv, char** argc)
 	lua_State* luaState = lua_newstate(LuaAllocatorCallback, &allocatorUd);    
 	luaL_openlibs(luaState);
 
-	// NOTE: Register C-callbacks for lua.
 	api::initialize(luaState);
 
 	setupContactCallbacks();
 	
-	Controller activeController;
-    
+	Controller activeController;  
 	GameInput gameInput;
 	gameInput.currentKeyboard = &gameInput.keyboards[0];
 	gameInput.previousKeyboard = &gameInput.keyboards[1];
 	gameInput.currentController = &gameInput.controllers[0];
 	gameInput.previousController = &gameInput.controllers[1];
 
-	GameState gameState;
-	gameState.renderer = renderer;
-	gameState.physics = physics;
-	gameState.resources = resources;
-	gameState.input = &gameInput;
-	gameState.world = world;
+	VoidstormContext context;
+	context.renderer = renderer;
+	context.physics = physics;
+	context.resources = resources;
+	context.input = &gameInput;
+	context.world = world;
 
-	lua_getglobal(luaState, "_G");
-	lua_pushlightuserdata(luaState, &gameState);
-	lua_setfield(luaState, -2, "state");
-	lua_pushboolean(luaState, false);
-	lua_setfield(luaState, -2, "initialized");
-
-	lua_newtable(luaState);
+	bool error = false;
+	do
 	{
-	    LUA_ENUM(luaState, debug, 0);
-	    LUA_ENUM(luaState, release , 1);
-	}
-	lua_setfield(luaState, -2, "buildtype");
-    
+	    worldStack->reset();
+	    world->reset();
+	    renderer->getParticleEngine()->reset();
+	    
+	    lua_getglobal(luaState, "_G");
+	    lua_pushlightuserdata(luaState, &context);
+	    lua_setfield(luaState, -2, "state");
+
+	    lua_newtable(luaState);
+	    {
+		LUA_ENUM(luaState, debug, 0);
+		LUA_ENUM(luaState, release, 1);
+	    }
+	    lua_setfield(luaState, -2, "buildtype");
+
 #ifdef _DEBUG
-	lua_pushinteger(luaState, 0);
+	    lua_pushinteger(luaState, 0);
 #else
-	lua_pushinteger(luaState, 1);
+	    lua_pushinteger(luaState, 1);
 #endif	
-	lua_setfield(luaState, -2, "build");
-    
-	lua_getfield(luaState, -1, "dofile");
-	lua_pushstring(luaState, "voidstorm_def.lua");
+	    lua_setfield(luaState, -2, "build");
 
-	if(lua_pcall(luaState, 1, 0, 0) != 0)
-	{
-	    PRINT("lua_pcall: %s\n", lua_tostring(luaState, -1));
-	}
+	    lua_getfield(luaState, -1, "dofile");
+	    lua_pushstring(luaState, "voidstorm.lua");
+	    if(lua_pcall(luaState, 1, 0, 0) != 0)
+	    {
+		PRINT("lua_pcall: %s\n", lua_tostring(luaState, -1));
+		PRINT( "Press any key to continue..." );
+		getchar();
+		error = true;
+	    }  else { error = false; }
+	    
+	    lua_getfield(luaState, -1, "GameInitialize");
+	    if(lua_pcall(luaState, 0, 0, 0) != 0)
+	    {
+		PRINT("lua_pcall: %s\n", lua_tostring(luaState, -1));
+		PRINT( "Press any key to continue..." );
+		getchar();
+		error = true;
+	    } else { error = false; }
 
-	lua_getfield(luaState, -1, "dofile");
-	lua_pushstring(luaState, "voidstorm.lua");
-
-	if(lua_pcall(luaState, 1, 0, 0) != 0)
-	{
-	    PRINT("lua_pcall: %s\n", lua_tostring(luaState, -1));
-	}
-
-	lua_pop(luaState, 1);
+	    lua_pop(luaState, 1);
+        
+	} while (error);
 
 	State state = State::RUNNING;
-	bool32 initialized = true;   
-
+	
 	RecordingState rstate;
 	if(!setupRecordingState(&gameMemory, &rstate))
 	{
 	    PRINT("Failed to setup recording state.\n");
-	    //state = State::QUIT;
+	    state = State::QUIT;
 	}
 
 	uint64_t frameCounter = 0;
 	uint64_t prevTime = SDL_GetPerformanceCounter();
 	while(state == State::RUNNING)
 	{
-	    TIME_BLOCK(Frame)
+	    TIME_BLOCK(Frame);
 	
-		uint64_t currentTime = SDL_GetPerformanceCounter();
+	    uint64_t currentTime = SDL_GetPerformanceCounter();
 	    gameInput.dt = (float)((currentTime - prevTime) / (double)SDL_GetPerformanceFrequency());
 	    prevTime = currentTime;
 
+	    //gameInput.currentController->rightStickX = 0.0f;
+	    //gameInput.currentController->rightStickY = 0.0f;
 	    //gameInput.dt = 1 / 60.0f;
+	    
 	    state = handleEvents(gameInput.currentController, &activeController, renderer);
 
 	    gameInput.currentController->A.isPressed = SDL_GameControllerGetButton(activeController.pad, SDL_CONTROLLER_BUTTON_A);
@@ -312,13 +325,14 @@ int main(int argv, char** argc)
 	    gameInput.currentController->X.isPressed = SDL_GameControllerGetButton(activeController.pad, SDL_CONTROLLER_BUTTON_X);
 	    gameInput.currentController->Y.isPressed = SDL_GameControllerGetButton(activeController.pad, SDL_CONTROLLER_BUTTON_Y);
 
+	    memcpy(gameInput.currentKeyboard->keys, SDL_GetKeyboardState(NULL), sizeof(uint8_t) * SDL_NUM_SCANCODES);
+
 	    if(isKeyDownAndReleased(&gameInput, SDL_SCANCODE_F11))
 	    {
 		renderer->toogleFullscreen();
 	    }
 	
-#ifdef VOIDSTORM_INTERNAL
-	
+#ifdef VOIDSTORM_INTERNAL	
 	    if(isKeyDownAndReleased(&gameInput, SDL_SCANCODE_Q))
 	    {
 		beginRecord(&gameMemory, &rstate);
@@ -338,7 +352,23 @@ int main(int argv, char** argc)
 	    {
 		endPlayback(&rstate);
 	    }
-	
+
+	    if(isKeyDownAndReleased(&gameInput, SDL_SCANCODE_R))
+	    {
+		worldStack->reset();
+		world->reset();
+		renderer->getParticleEngine()->reset();
+		
+		lua_getglobal(luaState, "_G");
+		lua_getfield(luaState, -1, "GameInitialize");
+
+		if(lua_pcall(luaState, 0, 0, 0) != 0)
+		{
+		    PRINT("lua_pcall: %s\n", lua_tostring(luaState, -1));
+		}
+		lua_pop(luaState, 1);
+	    }
+	    
 	    if(rstate.isRecording)
 	    {
 		recordInput(&rstate, &gameInput);
@@ -348,16 +378,18 @@ int main(int argv, char** argc)
 	    {
 		if(playbackInput(&gameMemory, &rstate, &gameInput))
 		{
-		    // NOTE: Reload the script files incase the scripts are modified
-		    // during playback.
-		    luaFiles.clear();
-		    
-		    lua_getfield(luaState, LUA_GLOBALSINDEX, "dofile");
-		    lua_pushstring(luaState, "voidstorm.lua");
-
-		    if (lua_pcall(luaState, 1, 0, 0) != 0)
+		    // NOTE (daniel): Reload the script files incase the scripts are modified during playback.
+		    for (size_t i = 0; i < luaFiles.size(); ++i)
 		    {
-			PRINT("lua_pcall: %s\n", lua_tostring(luaState, -1));
+			LuaFile& file = luaFiles[i];
+			
+			lua_getfield(luaState, LUA_GLOBALSINDEX, "dofile");
+			lua_pushstring(luaState, file.name);
+
+			if(lua_pcall(luaState, 1, 0, 0) != 0)
+			{
+			    PRINT("lua_pcall: %s\n", lua_tostring(luaState, -1));
+			}
 		    }
 		}
 	    }
@@ -381,6 +413,46 @@ int main(int argv, char** argc)
 		    }
 		}
 	    }
+
+#if VOIDSTORM_DEBUG_SPRITE_BOUNDS == 1	    	    
+	    for(uint32_t i = 1; i < world->sprites.data.used; ++i)
+	    {
+		Entity e = world->sprites.data.entities[i];
+		TransformManager::Instance transform = world->transforms.lookup(e);
+		
+		glm::vec2 pos = world->transforms.data.position[transform.index];
+		glm::vec2 size = world->sprites.data.size[i];
+		glm::vec2 origin = world->sprites.data.origin[i];
+
+		AABB aabb;
+		aabb.lower = pos - origin * size;
+		aabb.upper = pos + size - origin * size;
+
+		renderer->getLineRenderer()->drawAABB(aabb, glm::vec4(1,0,0,1));
+	    }
+#endif	    
+	    
+#if VOIDSTORM_DEBUG_COLLISION_BOUNDS == 1
+	    for(uint32_t i = 1; i < world->collisions.data.used; ++i)
+	    {
+		Entity e = world->collisions.data.entities[i];
+		TransformManager::Instance transform = world->transforms.lookup(e);
+		glm::vec2 pos = world->transforms.data.position[transform.index];
+		
+		CollisionManager::ShapeData shapeData = world->collisions.data.shape[i];
+		DbvtNode* node = world->collisions.data.node[i];
+		
+		if(shapeData.shape == ShapeType::CIRCLE)
+		    renderer->getLineRenderer()->drawCircle(pos, shapeData.data.circle->radius, glm::vec4(0,0,1,1));
+
+		if(shapeData.shape == ShapeType::POLYGON)
+		    renderer->getLineRenderer()->drawPolygon(*shapeData.data.polygon, glm::vec4(0, 0, 1, 1));
+		
+#if VOIDSTORM_DEBUG_PROXY_BOUNDS == 1
+		renderer->getLineRenderer()->drawAABB(node->aabb, glm::vec4(0,1,0,1));
+#endif
+	    }
+#endif	    
 #endif	
 
 	    {
@@ -427,7 +499,7 @@ int main(int argv, char** argc)
 	    sprintf(messageOutput, "Permanent Stack Used:%d Mb Size:%d Mb %0.2f%%\n", a, b, (a/(float)b)*100.0f);
 	    renderer->write(messageOutput, glm::vec2(500, 10), false);
 #endif
-	
+	    
 	    KeyboardState* ktemp = gameInput.currentKeyboard;
 	    gameInput.currentKeyboard = gameInput.previousKeyboard;
 	    gameInput.previousKeyboard = ktemp;
@@ -436,8 +508,6 @@ int main(int argv, char** argc)
 	    gameInput.currentController = gameInput.previousController;
 	    gameInput.previousController = temp;
 
-	    
-	    
 	    frameCounter++;
 	}
 

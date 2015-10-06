@@ -1,3 +1,13 @@
+
+void EntityManager::reset()
+{
+    memset(&generation[0], 0, ARRAYSIZE(generation) * sizeof(uint8_t));
+    memset(&freeIndices[0], 0, ARRAYSIZE(freeIndices) * sizeof(uint32_t));
+    
+    freeIndicesCount = 0;
+    generationCount = 0;
+}
+
 Entity EntityManager::create()
 {
     uint32_t index;
@@ -16,9 +26,9 @@ Entity EntityManager::create()
     }
 
     Entity e = { ((generation[index] << ENTITY_GENERATION_SHIFT) & ENTITY_GENERATION_MASK) | index };
-    PRINT("Entity created!\n");
-    PRINT("Index: %d\n", e.index());
-    PRINT("Generation: %d\n", e.generation());
+    //PRINT("Entity created!\n");
+    //PRINT("Index: %d\n", e.index());
+    //PRINT("Generation: %d\n", e.generation());
     
     return e;
 }
@@ -32,10 +42,10 @@ void EntityManager::destroy(Entity e)
     assert(freeIndicesCount < ARRAYSIZE(freeIndices));
     freeIndices[freeIndicesCount] = index;
     freeIndicesCount++;
-    
-    PRINT("Entity destroyed!\n");
-    PRINT("Index: %d\n", e.index());
-    PRINT("Generation: %d\n", e.generation());
+
+    //PRINT("Entity destroyed!\n");
+    //PRINT("Index: %d\n", e.index());
+    //PRINT("Generation: %d\n", e.generation());
 }
 
 bool EntityManager::alive(Entity e)

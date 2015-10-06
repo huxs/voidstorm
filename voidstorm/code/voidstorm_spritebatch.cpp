@@ -7,7 +7,6 @@ static SpriteFont loadFont(dcfx::Context* renderCtx, const char* filepath)
     SpriteFont font;
 
 #ifndef ANDROID
-    // TODO: Read this from somehere..
     tinystl::string assets(VOIDSTORM_FONT_DIRECTORY);
     tinystl::string file(filepath);
     assets.append(file.c_str(), file.c_str() + file.size());

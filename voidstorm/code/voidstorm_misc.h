@@ -1,14 +1,13 @@
 #pragma once
 
 /* TODO:
-   Miscellaneous functions which isn't put to place in the acrhitecture yet.
+   Put this into the resource manager.
 */
 
 static dcfx::ShaderHandle loadShader(dcfx::Context* renderCtx,
 				       const char* filepath,
 				       dcfx::ShaderType type)
 {
-    // TODO: Read this from somehere..
 #ifndef ANDROID    
     tinystl::string assets(VOIDSTORM_SHADER_DIRECTORY);
     tinystl::string file(filepath);

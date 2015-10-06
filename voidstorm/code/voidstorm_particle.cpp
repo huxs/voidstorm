@@ -4,6 +4,26 @@ ParticleEngine::ParticleEngine(dcutil::Stack* _stack, dcfx::Context* _renderCtx,
     srand((unsigned int)time(NULL));
 }
 
+void ParticleEngine::reset()
+{
+    emittersInPlayCount = 0;
+
+    effectHandles = dcutil::HandleAllocator<MaxEffects>();
+    emitterHandles = dcutil::HandleAllocator<MaxEmitters>();
+
+    for(int i = 0; i < MaxEffects; ++i)
+    {
+	effects[i] = ParticleEffect();
+	effectsInPlay[i] = nullptr;
+    }
+    
+    for(int i = 0; i < MaxEmitters; ++i)
+    {
+	emitters[i] = ParticleEmitter();
+	emittersInPlay[i] = nullptr;
+    }
+}
+
 ParticleHandle ParticleEngine::createHandle(ParticleEffectDescription* desc)
 {
     ParticleHandle handle = { effectHandles.alloc() };

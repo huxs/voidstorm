@@ -74,37 +74,7 @@ namespace api
 	const char* filename = lua_tostring(L, 1);
 	strcpy(file.name, filename);
 
-	// TODO: Read this from somehere..
-#ifndef ANDROID    
-	strcpy(file.path, VOIDSTORM_SCRIPT_DIRECTORY);
-	strcat(file.path, file.name);
-  
-	if (luaL_dofile(L, file.path))
-	{
-	    PRINT("luaL_dofile: %s @ %s\n", file.path, lua_tostring(L, -1));
-	    return 0;
-	}
-
-	PRINT("File loaded: %s\n", file.path);
-
-#ifdef VOIDSTORM_INTERNAL
-	if (getLastWriteTime(file.path, &file.timeWhenLoaded) != 0)
-	{
-	    file.hash = dcutil::fnv32(&file.name[0]);
-
-	    for (size_t i = 0; i < g_luaFiles->size(); ++i)
-	    {
-		LuaFile& loadedFile = g_luaFiles->operator[](i);
-		if (loadedFile.hash == file.hash)
-		{
-		    loadedFile.timeWhenLoaded = file.timeWhenLoaded;
-		}
-	    }
-
- 	    g_luaFiles->push_back(file);
-	}
-#endif
-#else
+#ifdef ANDROID
 	SDL_RWops* handle = SDL_RWFromFile(filename, "r");
 	if(handle == 0)
 	{
@@ -135,9 +105,39 @@ namespace api
 	    delete[] data;
 	    SDL_RWclose(handle);
 	}
-    
-#endif    
-	
+#else	
+	strcpy(file.path, VOIDSTORM_SCRIPT_DIRECTORY);
+	strcat(file.path, file.name);
+  
+	if (luaL_dofile(L, file.path))
+	{
+	    PRINT("luaL_dofile: %s @ %s\n", file.path, lua_tostring(L, -1));
+	    return 0;
+	}
+
+	PRINT("File loaded: %s\n", file.path);
+
+#ifdef VOIDSTORM_INTERNAL
+	if (getLastWriteTime(file.path, &file.timeWhenLoaded) != 0)
+	{
+	    file.hash = dcutil::fnv32(&file.name[0]);
+
+		bool newFile = true;
+	    for (size_t i = 0; i < g_luaFiles->size(); ++i)
+	    {
+		LuaFile& loadedFile = g_luaFiles->operator[](i);
+		if (loadedFile.hash == file.hash)
+		{
+		    loadedFile.timeWhenLoaded = file.timeWhenLoaded;
+			newFile = false;
+		}
+	    }
+
+		if(newFile)
+ 	    g_luaFiles->push_back(file);
+	}
+#endif
+#endif
 	return result;
     }
 
@@ -148,23 +148,22 @@ namespace api
 	{ NULL, NULL }
     };
 
-    inline GameState* getState(lua_State* luaState)
+    inline VoidstormContext* getContext(lua_State* luaState)
     {
 	lua_getglobal(luaState, "_G");
 	lua_getfield(luaState, -1, "state");
-	GameState* state = (GameState*)lua_topointer(luaState, -1);
+	VoidstormContext* context = (VoidstormContext*)lua_topointer(luaState, -1);
 	lua_pop(luaState, 1);
-	return state;
+	return context;
     }
     
     /*
       NOTE: VECTOR 2 FUNCTIONS
     */
-    
-      
-    inline void toVec2(lua_State* luaState, glm::vec2 vec)
+          
+    inline void toVec2(lua_State* luaState, const glm::vec2& vec)
     {
-	glm::vec2 *s = (glm::vec2*)lua_newuserdata(luaState, sizeof(glm::vec2));
+	glm::vec2* s = (glm::vec2*)lua_newuserdata(luaState, sizeof(glm::vec2));
 	*s = vec;
 	lua_getglobal(luaState, "vec2_m");
 	lua_setmetatable(luaState, -2);
@@ -191,7 +190,7 @@ namespace api
 	if(strcmp(memberName, "y") == 0)
 	    lua_pushnumber(luaState, ptemp->y);
 
-	// TODO: Fix.
+	// TODO (daniel): This should be a static function.
 	if(strcmp(memberName, "normalize") == 0)
 	    toVec2(luaState, glm::normalize(*ptemp));
 	return 1;
@@ -275,8 +274,7 @@ namespace api
 	v->x = x;
 	v->y = y;
 
-	lua_getglobal(luaState, "vec2_m");
-	lua_setmetatable(luaState, -2);
+	toVec2(luaState, *v);
 	return 1;
     }
 
@@ -290,10 +288,10 @@ namespace api
       NOTE: COLOR FUNCTIONS
     */
     
-    inline void toColor(lua_State* luaState, glm::vec4 vec)
+    inline void toColor(lua_State* luaState, const glm::vec4& color)
     {
 	glm::vec4 *s = (glm::vec4*)lua_newuserdata(luaState, sizeof(glm::vec4));
-	*s = vec;
+	*s = color;
 	lua_getglobal(luaState, "color_m");
 	lua_setmetatable(luaState, -2);
     }
@@ -303,6 +301,7 @@ namespace api
 	glm::vec4* ptemp = (glm::vec4*)lua_touserdata(luaState, 1);
 	const char* memberName = lua_tostring(luaState, 2);
 	float value  = (float)luaL_checknumber(luaState, 3);
+	
 	if(strcmp(memberName, "x") == 0 || strcmp(memberName, "r") == 0 || strcmp(memberName, "h") == 0)
 	    ptemp->x = value;
 	if(strcmp(memberName, "y") == 0 || strcmp(memberName, "g") == 0 || strcmp(memberName, "s") == 0)
@@ -311,6 +310,7 @@ namespace api
 	    ptemp->z = value;
 	if(strcmp(memberName, "w") == 0 || strcmp(memberName, "a") == 0)
 	    ptemp->w = value;
+	
 	return 0;
     }
 
@@ -318,7 +318,7 @@ namespace api
     {
 	glm::vec4* ptemp = (glm::vec4*)lua_touserdata(luaState, 1);
 	const char* memberName = lua_tostring(luaState, 2);
-
+	
 	if(strcmp(memberName, "x") == 0 || strcmp(memberName, "r") == 0 || strcmp(memberName, "h") == 0)
 	    lua_pushnumber(luaState, ptemp->x);
 	if(strcmp(memberName, "y") == 0 || strcmp(memberName, "g") == 0 || strcmp(memberName, "s") == 0)
@@ -380,7 +380,7 @@ namespace api
 	return 1;
     }
 
-// TODO: Move these conversion functions to the util library.
+    // TODO (daniel): Move these conversion functions to the dcutil library.
     static int toRGBFromHSV(lua_State* luaState)
     {
 	glm::vec4* hsv = (glm::vec4*)lua_touserdata(luaState, 1);
@@ -489,8 +489,7 @@ namespace api
 	v->z = b;
 	v->w = a;
 
-	lua_getglobal(luaState, "color_m");
-	lua_setmetatable(luaState, -2);  
+	toColor(luaState, *v);  
 	return 1;
     }
 
@@ -503,22 +502,33 @@ namespace api
     };
 
     /*
-      NOTE: TEXTURE FUNCTIONS
+      TEXTURE FUNCTIONS
     */
-    
-// TODO: Add functions for query width / height etc.
+    static int textureSize(lua_State* luaState)
+    {
+	Texture* texture = *(Texture**)lua_touserdata(luaState, 1);
+
+	glm::vec2* v = (glm::vec2*)lua_newuserdata(luaState, sizeof(glm::vec2));
+	v->x = (float)texture->width;
+	v->y = (float)texture->height;
+
+	toVec2(luaState, *v);
+	return 1;
+    }
+
     const struct luaL_Reg texture_functions_m[] =
     {
+	{ "size", textureSize },
 	{ NULL, NULL }
     };
 
     static int textureNew(lua_State* luaState)
     {
-	GameState* state = getState(luaState);
+	VoidstormContext* context = getContext(luaState);
 	const char* path = lua_tostring(luaState, 1);
 
 	Texture** texture = (Texture**)lua_newuserdata(luaState, sizeof(Texture*));
-	*texture = state->resources->textures.load(path);
+	*texture = context->resources->textures.load(path);
 
 	lua_getglobal(luaState, "texture_m");
 	lua_setmetatable(luaState, -2);
@@ -527,10 +537,10 @@ namespace api
     
     static int textureDelete(lua_State* luaState)
     {
-	GameState* state = getState(luaState);
+	VoidstormContext* context = getContext(luaState);
 	Texture** texture = (Texture**)lua_touserdata(luaState, 1);
 
-	state->resources->textures.remove(*texture);
+	context->resources->textures.remove(*texture);
 	return 0;
     };
 
@@ -542,14 +552,12 @@ namespace api
     };
     
     /*
-      NOTE: PARTICLE FUNCTIONS
+       PARTICLE FUNCTIONS
     */
-
-    inline void toParticle(lua_State* luaState, uint16_t handle)
+    inline void toParticle(lua_State* luaState, ParticleHandle handle)
     {
-	// TODO: This needs to hold a handle to the particle engine object.
-	uint16_t *s = (uint16_t*)lua_newuserdata(luaState, sizeof(uint16_t));
-	*s = handle;
+	ParticleHandle* ud = (ParticleHandle*)lua_newuserdata(luaState, sizeof(ParticleHandle));
+	*ud = handle;
     
 	lua_getglobal(luaState, "particle_m");
 	lua_setmetatable(luaState, -2);
@@ -557,65 +565,51 @@ namespace api
 
     static int particlePlay(lua_State* luaState)
     {
-	ParticleHandle s = { *(uint16_t*)lua_touserdata(luaState, 1) };
+	VoidstormContext* context = getContext(luaState);
+	ParticleHandle handle = *(ParticleHandle*)lua_touserdata(luaState, 1);
     
-	GameState* state = getState(luaState);
-    
-	state->renderer->getParticleEngine()->play(s);
-
+	context->renderer->getParticleEngine()->play(handle);
 	return 0;
     }
 
     static int particleStop(lua_State* luaState)
     {
-	ParticleHandle s = { *(uint16_t*)lua_touserdata(luaState, 1) };
+	VoidstormContext* context = getContext(luaState);
+	ParticleHandle handle = *(ParticleHandle*)lua_touserdata(luaState, 1);
     
-	GameState* state = getState(luaState);
-    
-	state->renderer->getParticleEngine()->stop(s);
-
+	context->renderer->getParticleEngine()->stop(handle);
 	return 0;
     }
 
     static int particleSetPosition(lua_State* luaState)
     {
-	ParticleHandle s = { *(uint16_t*)lua_touserdata(luaState, 1) };
-    
-	GameState* state = getState(luaState);
+	VoidstormContext* context = getContext(luaState);
+	ParticleHandle handle = *(ParticleHandle*)lua_touserdata(luaState, 1);
+	glm::vec2 position = *(glm::vec2*)lua_touserdata(luaState, 2);
 
-	glm::vec2* position = (glm::vec2*)lua_touserdata(luaState, 2);
-
-	state->renderer->getParticleEngine()->setPosition(s, *position);
-
+	context->renderer->getParticleEngine()->setPosition(handle, position);
 	return 0;
     }
 
     static int particleSetRotation(lua_State* luaState)
     {
-	ParticleHandle  s = { *(uint16_t*)lua_touserdata(luaState, 1) };
-    
-	GameState* state = getState(luaState);
-
+	VoidstormContext* context = getContext(luaState);
+	ParticleHandle handle = *(ParticleHandle*)lua_touserdata(luaState, 1);
 	float rotation = (float)lua_tonumber(luaState, 2);
 
-	state->renderer->getParticleEngine()->setRotation(s, rotation);
-
+	context->renderer->getParticleEngine()->setRotation(handle, rotation);
 	return 0;
     }
 
     static int particleSetDepth(lua_State* luaState)
     {
-	ParticleHandle s = { *(uint16_t*)lua_touserdata(luaState, 1) };
-    
-	GameState* state = getState(luaState);
-
+	VoidstormContext* context = getContext(luaState);
+	ParticleHandle handle = *(ParticleHandle*)lua_touserdata(luaState, 1);
 	float depth = (float)lua_tonumber(luaState, 2);
 
-	state->renderer->getParticleEngine()->setDepth(s, depth);
-
+	context->renderer->getParticleEngine()->setDepth(handle, depth);
 	return 0;
     }
-
 
     const struct luaL_Reg particle_functions_m[] =
     {
@@ -629,37 +623,30 @@ namespace api
 
     static int particleNew(lua_State* luaState)
     {
-	GameState* state = getState(luaState);
-
-	ParticleEffectDescription* effect = state->resources->effects.load(luaState);
+	VoidstormContext* context = getContext(luaState);
+	
+	ParticleEffectDescription* effectDesc = context->resources->effects.load(luaState);   
+	ParticleHandle handle = context->renderer->getParticleEngine()->createHandle(effectDesc);
     
-	ParticleHandle handle = state->renderer->getParticleEngine()->createHandle(effect);
-    
-	toParticle(luaState, handle.index);
-    
+	toParticle(luaState, handle);    
 	return 1;
     };
 
     static int particleStore(lua_State* luaState)
     {
-	GameState* state = getState(luaState);
-
-	ParticleEffectDescription* effect = state->resources->effects.load(luaState);
-    	
+	VoidstormContext* context = getContext(luaState);
+	context->resources->effects.load(luaState);
 	return 0;
     };
 
     static int particleDelete(lua_State* luaState)
     {
-	GameState* state = getState(luaState);
+	VoidstormContext* context = getContext(luaState);
+	ParticleHandle handle = *(ParticleHandle*)lua_touserdata(luaState, 1);
 
-	ParticleHandle s = { *(uint16_t*)lua_touserdata(luaState, 1) };
-
-	state->renderer->getParticleEngine()->deleteHandle(s);
-    
+	context->renderer->getParticleEngine()->deleteHandle(handle);    
 	return 0;
     };
-
 
     const struct luaL_Reg particle_functions_s[] =
     {
@@ -670,15 +657,14 @@ namespace api
     };
 
     /*
-      NOTE: INPUT FUNCTIONS
-    */
-    
+      INPUT FUNCTIONS
+    */   
     static int isButtonDown(lua_State* luaState)
     {
-	GameState* state = (GameState*)lua_topointer(luaState, 1);
+	VoidstormContext* context = (VoidstormContext*)lua_topointer(luaState, 1);
 	int index = (int)lua_tointeger(luaState, 2);
 
-	bool32 result = (state->input->currentController->arr[index].isPressed);
+	bool32 result = (context->input->currentController->arr[index].isPressed);
     
 	lua_pushboolean(luaState, result);
 	return 1;
@@ -686,11 +672,11 @@ namespace api
 
     static int isButtonPressed(lua_State* luaState)
     {
-	GameState* state = getState(luaState);
+	VoidstormContext* context = getContext(luaState);
 	int index = (int)lua_tointeger(luaState, 1);
 
-	bool32 result = (state->input->currentController->arr[index].isPressed
-			 && !state->input->previousController->arr[index].isPressed);
+	bool32 result = (context->input->currentController->arr[index].isPressed
+			 && !context->input->previousController->arr[index].isPressed);
     
 	lua_pushboolean(luaState, result);
 	return 1;
@@ -698,11 +684,11 @@ namespace api
 
     static int isButtonReleased(lua_State* luaState)
     {
-	GameState* state = getState(luaState);
+	VoidstormContext* context = getContext(luaState);
 	int index = (int)lua_tointeger(luaState, 1);
 
-	bool32 result = (!state->input->currentController->arr[index].isPressed
-			 && state->input->previousController->arr[index].isPressed);
+	bool32 result = (!context->input->currentController->arr[index].isPressed
+			 && context->input->previousController->arr[index].isPressed);
 
 	lua_pushboolean(luaState, result);
 	return 1;
@@ -710,15 +696,15 @@ namespace api
 
     static int getLeftStick(lua_State* luaState)
     {
-	GameState* state = getState(luaState);
-	toVec2(luaState, glm::vec2(state->input->currentController->leftStickX, state->input->currentController->leftStickY));
+	VoidstormContext* context = getContext(luaState);
+	toVec2(luaState, glm::vec2(context->input->currentController->leftStickX, context->input->currentController->leftStickY));
 	return 1;
     }
 
     static int getRightStick(lua_State* luaState)
     {
-	GameState* state = getState(luaState);
-	toVec2(luaState, glm::vec2(state->input->currentController->rightStickX, state->input->currentController->rightStickY));
+	VoidstormContext* context = getContext(luaState);
+	toVec2(luaState, glm::vec2(context->input->currentController->rightStickX, context->input->currentController->rightStickY));
 	return 1;
     }
 
@@ -733,12 +719,11 @@ namespace api
     };
 
     /*
-      NOTE: ENTITY FUNCTIONS
-    */
-    
+      ENTITY FUNCTIONS
+    */ 
     static int getNrOfEntities(lua_State* luaState)
     {
-	World* world = getState(luaState)->world;
+	World* world = getContext(luaState)->world;
 
 	lua_pushinteger(luaState, world->entities.getNrOfEntities());
     
@@ -747,10 +732,10 @@ namespace api
 
     static int createEntity(lua_State* luaState)
     {
-	World* world = getState(luaState)->world;
+	World* world = getContext(luaState)->world;
 	Entity entity = world->entities.create();
 
-	// NOTE: A entity is always accompanied with a transform component.
+	// NOTE (daniel): A entity is always accompanied with a transform component.
 	TransformManager::Instance instance = world->transforms.lookup(entity);
 	if(instance.index == 0)
 	{
@@ -763,35 +748,29 @@ namespace api
 
     static int destroyEntity(lua_State* luaState)
     {
-	GameState* state = getState(luaState);
+	VoidstormContext* context = getContext(luaState);
 	Entity entity = { (uint32_t)lua_tointeger(luaState, 1) };
 
-	// TODO: Should a entity have a flag which lists the components beloning to the entity?
-	// TODO: Should we defer deletion of components til end of frame?
-
-	CollisionManager::Instance instance = state->world->collisions.lookup(entity);
+	CollisionManager::Instance instance = context->world->collisions.lookup(entity);
 	if(instance.index != 0)
 	{
-	    DbvtNode* node = state->world->collisions.getNode(instance);
-	    
-	    state->physics->getTree()->destroyProxy(node);
-	    
-	    state->world->collisions.destroy(instance);
+	    DbvtNode* node = context->world->collisions.getNode(instance);	    
+	    context->physics->getTree()->destroyProxy(node);	    
+	    context->world->collisions.destroy(instance);
 	}
 	
-	state->world->transforms.destroy(state->world->transforms.lookup(entity));
-	state->world->physics.destroy(state->world->physics.lookup(entity));
-	state->world->sprites.destroy(state->world->sprites.lookup(entity));
-	state->world->responders.destroy(state->world->responders.lookup(entity));
-
-	state->world->entities.destroy(entity);
+	context->world->transforms.destroy(context->world->transforms.lookup(entity));
+	context->world->physics.destroy(context->world->physics.lookup(entity));
+	context->world->sprites.destroy(context->world->sprites.lookup(entity));
+	context->world->responders.destroy(context->world->responders.lookup(entity));
+	context->world->entities.destroy(entity);
 
 	return 0;
     }
 
     static int printEntity(lua_State* luaState)
     {
-	World* world = getState(luaState)->world;
+	World* world = getContext(luaState)->world;
 	Entity entity = { (uint32_t)lua_tointeger(luaState, 1) };
 
 	const char* prnt = "Index: %d - Generation %d\n";
@@ -808,7 +787,7 @@ namespace api
 
     static int addSprite(lua_State* luaState)
     {
-	World* world = getState(luaState)->world;
+	World* world = getContext(luaState)->world;
 	Entity entity = { (uint32_t)lua_tointeger(luaState, 1) };
 
 	SpriteManager::Instance instance = world->sprites.lookup(entity);
@@ -823,7 +802,7 @@ namespace api
 
     static int addPhysics(lua_State* luaState)
     {
-	World* world = getState(luaState)->world;
+	World* world = getContext(luaState)->world;
 	Entity entity = { (uint32_t)lua_tointeger(luaState, 1) };
 
 	PhysicsManager::Instance instance = world->physics.lookup(entity);
@@ -835,40 +814,50 @@ namespace api
 	return 0;
     }
 
-    static int addCircleShape(lua_State* luaState)
+    static int addCollision(lua_State* luaState)
     {
-	GameState* state = getState(luaState);
+	World* world = getContext(luaState)->world;
 	Entity entity = { (uint32_t)lua_tointeger(luaState, 1) };
-    
 	uint32_t type = (uint32_t)lua_tointeger(luaState, 2);
 	uint32_t mask = (uint32_t)lua_tointeger(luaState, 3);
-	float radius = (float)lua_tonumber(luaState, 4);
 
-	CollisionManager::Instance instance = state->world->collisions.lookup(entity);
+	CollisionManager::Instance instance = world->collisions.lookup(entity);
 	if(instance.index == 0)
 	{
-	    instance = state->world->collisions.create(entity, type, mask);
-	    
-	    CircleShape* circle = state->world->collisions.createCircleShape(instance);
+	    instance = world->collisions.create(entity, type, mask);
+	}
+	
+	return 0;
+    }
+
+    static int addCircleShape(lua_State* luaState)
+    {
+	VoidstormContext* context = getContext(luaState);
+	Entity entity = { (uint32_t)lua_tointeger(luaState, 1) };
+	float radius = (float)lua_tonumber(luaState, 2);
+
+	CollisionManager::Instance instance = context->world->collisions.lookup(entity);
+	if(instance.index != 0)
+	{
+	    CircleShape* circle = context->world->collisions.createCircleShape(instance);
 	    circle->radius = radius;
 
 	    // Build AABB that covers the collision shape.
-	    TransformManager::Instance tinstance = state->world->transforms.lookup(entity);
-	    glm::vec2 position = state->world->transforms.getPosition(tinstance);
+	    TransformManager::Instance tinstance = context->world->transforms.lookup(entity);
+	    glm::vec2 position = context->world->transforms.getPosition(tinstance);
 	    
 	    AABB aabb;
 	    aabb.lower = glm::vec2(position.x - radius, position.y - radius);
 	    aabb.upper = glm::vec2(position.x + radius, position.y + radius);
 
 	    // Create proxy and isert into the tree.
-	    DbvtNode* node = state->physics->getTree()->createProxy(entity, aabb);
+	    DbvtNode* node = context->physics->getTree()->createProxy(entity, aabb);
 
-	    // TODO: When should we perform the contact determination.
-	    Contact contacts[100];
-	    int contactsFound = state->physics->getTree()->query(node, contacts);
-	    state->world->collisions.addContacts(instance, contacts, contactsFound);	    
+	    Contact contacts[1024];
+	    int contactsFound = context->physics->getTree()->query(node, contacts);
+	    context->world->collisions.addContacts(instance, contacts, contactsFound);	    
 
-	    state->world->collisions.setNode(instance, node);
+	    context->world->collisions.setNode(instance, node);
 	}
 
 	return 0;
@@ -876,38 +865,32 @@ namespace api
 
     static int addPolygonShape(lua_State* luaState)
     {
-	GameState* state = getState(luaState);
+	VoidstormContext* context = getContext(luaState);
 	Entity entity = { (uint32_t)lua_tointeger(luaState, 1) };
-	uint32_t type = (uint32_t)lua_tointeger(luaState, 2);
-	uint32_t mask = (uint32_t)lua_tointeger(luaState, 3);
-
-	// TODO: Is there a better way to pass varying numbers of args.
-	uint32_t count = (uint32_t)lua_tointeger(luaState, 4);
+	uint32_t count = (uint32_t)lua_tointeger(luaState, 2);
+	assert(count < VOIDSTORM_MAX_POLYGON_VERTICES);
 	glm::vec2 vertices[VOIDSTORM_MAX_POLYGON_VERTICES];
 	for(uint32_t i = 0; i < count; ++i)
 	{
-	    vertices[i] = *(glm::vec2*)lua_touserdata(luaState, 5 + i);
+	    vertices[i] = *(glm::vec2*)lua_touserdata(luaState, 3 + i);
 	}
 	
-	CollisionManager::Instance instance = state->world->collisions.lookup(entity);
-	if(instance.index == 0)
+	CollisionManager::Instance instance = context->world->collisions.lookup(entity);
+	if(instance.index != 0)
 	{
-	    instance = state->world->collisions.create(entity, type, mask);
-  
-	    PolygonShape* s = state->world->collisions.createPolygonShape(instance);
+	    PolygonShape* s = context->world->collisions.createPolygonShape(instance);
 	    s->set(&vertices[0], count);
 
-		AABB aabb = s->computeAABB();
+	    AABB aabb = s->computeAABB();
 
 	    // Create proxy and isert into the tree.
-	    DbvtNode* node = state->physics->getTree()->createProxy(entity, aabb);
+	    DbvtNode* node = context->physics->getTree()->createProxy(entity, aabb);
 
-	    // TODO: When should we perform the contact determination.
-	    Contact contacts[100];
-	    int contactsFound = state->physics->getTree()->query(node, contacts);
-	    state->world->collisions.addContacts(instance, contacts, contactsFound);   
+	    Contact contacts[1024];
+	    int contactsFound = context->physics->getTree()->query(node, contacts);
+	    context->world->collisions.addContacts(instance, contacts, contactsFound);   
 
-	    state->world->collisions.setNode(instance, node);
+	    context->world->collisions.setNode(instance, node);
 	}
 
 	return 0;
@@ -915,7 +898,7 @@ namespace api
 
     static int addResponder(lua_State* luaState)
     {
-	World* world = getState(luaState)->world;
+	World* world = getContext(luaState)->world;
 	Entity entity = { (uint32_t)lua_tointeger(luaState, 1) };
     
 	CollisionResponderManager::Instance instance = world->responders.lookup(entity);
@@ -929,20 +912,28 @@ namespace api
 
     static int setType(lua_State* luaState)
     {
-	World* world = getState(luaState)->world;
+	World* world = getContext(luaState)->world;
 	CollisionManager::Instance instance = world->collisions.lookup({ (uint32_t)lua_tointeger(luaState, 1) });
-
 	int type = (int)lua_tointeger(luaState, 2);
 
 	world->collisions.setType(instance, type);
 	return 0;
     }
 
-    static int setMask(lua_State* luaState)
+    static int getType(lua_State* luaState)
     {
-	World* world = getState(luaState)->world;
+	World* world = getContext(luaState)->world;
 	CollisionManager::Instance instance = world->collisions.lookup({ (uint32_t)lua_tointeger(luaState, 1) });
 
+	uint32_t type = world->collisions.getType(instance);
+	lua_pushinteger(luaState, type);
+	return 1;
+    }
+
+    static int setMask(lua_State* luaState)
+    {
+	World* world = getContext(luaState)->world;
+	CollisionManager::Instance instance = world->collisions.lookup({ (uint32_t)lua_tointeger(luaState, 1) });
 	int mask = (int)lua_tointeger(luaState, 2);
 
 	world->collisions.setMask(instance, mask);
@@ -951,31 +942,28 @@ namespace api
 
     static int setOffset(lua_State* luaState)
     {
-	World* world = getState(luaState)->world;
+	World* world = getContext(luaState)->world;
 	CollisionManager::Instance instance = world->collisions.lookup({ (uint32_t)lua_tointeger(luaState, 1) });
-
-	// TODO: Replace with userobject for Vec2.
-	float px = (float)lua_tonumber(luaState, 2);
-	float py = (float)lua_tonumber(luaState, 3);
-
-	world->collisions.setOffset(instance, glm::vec2(px, py));
+	glm::vec2* v = (glm::vec2*)lua_touserdata(luaState, 2);
+	
+	world->collisions.setOffset(instance, *v);
 	return 0;
     }
 
     static int setRadius(lua_State* luaState)
     {
-	World* world = getState(luaState)->world;
+	World* world = getContext(luaState)->world;
 	CollisionManager::Instance instance = world->collisions.lookup({ (uint32_t)lua_tointeger(luaState, 1) });
-
 	float radius = (float)lua_tonumber(luaState, 2);
     
 	world->collisions.setRadius(instance, radius);
 	return 0;
     }
 
+    // TODO (daniel): There is probely a better and cleaner way for passing these results.
     static int getCollidedEntity(lua_State* luaState)
     {    
-	World* world = getState(luaState)->world;
+	World* world = getContext(luaState)->world;
 	CollisionResponderManager::Instance instance = world->responders.lookup({ (uint32_t)lua_tointeger(luaState, 1) });
 
 	int& entityCount = world->responders.data.collidedWith[instance.index].entityCount;
@@ -1005,19 +993,36 @@ namespace api
 
     static int setPosition(lua_State* luaState)
     {
-	World* world = getState(luaState)->world;
-	TransformManager::Instance instance = world->transforms.lookup({ (uint32_t)lua_tointeger(luaState, 1) });
+	VoidstormContext* context = getContext(luaState);
+	Entity e = { (uint32_t)lua_tointeger(luaState, 1) };
+	glm::vec2 newPosition = *(glm::vec2*)lua_touserdata(luaState, 2);
 
-	glm::vec2* pos = (glm::vec2*)lua_touserdata(luaState, 2);
-    
-	world->transforms.setPosition(instance, *pos);
+	TransformManager::Instance transformInstance = context->world->transforms.lookup(e);
+	CollisionManager::Instance collisionInstance = context->world->collisions.lookup(e);
 
+	/* NOTE (daniel): When moving entities directly we cannot rely on the physics system to move the collision box, so we do it ourself here. */
+	// TODO (daniel): Nicer instance invalidation.
+	if(collisionInstance.index != 0)
+	{
+	    glm::vec2 oldPosition = context->world->transforms.getPosition(transformInstance);
+	    glm::vec2 displacement = newPosition - oldPosition;
+	    
+	    if(glm::length(displacement) > 0)
+	    {
+		context->physics->getTree()->moveProxy(
+		    context->world->collisions.getNode(collisionInstance),
+		    displacement);
+	    }
+	}
+
+	context->world->transforms.setPosition(transformInstance, newPosition);
+	assert(newPosition == newPosition && "API SetPosition Failed");
 	return 0;
     }
 
     static int getPosition(lua_State* luaState)
     {
-	World* world = getState(luaState)->world;
+	World* world = getContext(luaState)->world;
 	TransformManager::Instance instance = world->transforms.lookup({ (uint32_t)lua_tointeger(luaState, 1) });
 
 	glm::vec2 pos = world->transforms.getPosition(instance);
@@ -1027,33 +1032,30 @@ namespace api
 
     static int setRotation(lua_State* luaState)
     {
-	World* world = getState(luaState)->world;
+	World* world = getContext(luaState)->world;
 	TransformManager::Instance instance = world->transforms.lookup({ (uint32_t)lua_tointeger(luaState, 1) });
-
 	float value = (float)lua_tonumber(luaState, 2);
-
+	
 	world->transforms.setRotation(instance, value);
 	return 0;
     }
 
     static int getRotation(lua_State* luaState)
     {
-	World* world = getState(luaState)->world;
+	World* world = getContext(luaState)->world;
 	TransformManager::Instance instance = world->transforms.lookup({ (uint32_t)lua_tointeger(luaState, 1) });
 
-	float value  = world->transforms.getRotation(instance);
-    
+	float value  = world->transforms.getRotation(instance);    
 	lua_pushnumber(luaState, value);
 	return 1;
     }
 
     static int setDepth(lua_State* luaState)
     {
-	World* world = getState(luaState)->world;
+	World* world = getContext(luaState)->world;
 	TransformManager::Instance instance = world->transforms.lookup({ (uint32_t)lua_tointeger(luaState, 1) });
-
 	float value = (float)lua_tonumber(luaState, 2);
-
+	
 	world->transforms.setDepth(instance, value);
 	return 0;
     }
@@ -1061,20 +1063,18 @@ namespace api
 
     static int getDepth(lua_State* luaState)
     {
-	World* world = getState(luaState)->world;
+	World* world = getContext(luaState)->world;
 	TransformManager::Instance instance = world->transforms.lookup({ (uint32_t)lua_tointeger(luaState, 1) });
 
-	float value  = world->transforms.getDepth(instance);
-    
+	float value  = world->transforms.getDepth(instance);    
 	lua_pushnumber(luaState, value);
 	return 1;
     }
 
     static int setScale(lua_State* luaState)
     {
-	World* world = getState(luaState)->world;
+	World* world = getContext(luaState)->world;
 	TransformManager::Instance instance = world->transforms.lookup({ (uint32_t)lua_tointeger(luaState, 1) });
-
 	float value = (float)lua_tonumber(luaState, 2);
 
 	world->transforms.setScale(instance, value);
@@ -1084,30 +1084,49 @@ namespace api
 
     static int getScale(lua_State* luaState)
     {
-	World* world = getState(luaState)->world;
+	World* world = getContext(luaState)->world;
 	TransformManager::Instance instance = world->transforms.lookup({ (uint32_t)lua_tointeger(luaState, 1) });
 
-	float value  = world->transforms.getScale(instance);
-    
+	float value  = world->transforms.getScale(instance);   
 	lua_pushnumber(luaState, value);
 	return 1;
     }
     
     static int setTexture(lua_State* luaState)
     {
-	World* world = getState(luaState)->world;
+	World* world = getContext(luaState)->world;
 	SpriteManager::Instance instance = world->sprites.lookup({ (uint32_t)lua_tointeger(luaState, 1) });
 	Texture** texture = (Texture**)lua_touserdata(luaState, 2);
 
 	world->sprites.setTexture(instance, *texture);
 	return 0;
     }
+    
+    static int setOrigin(lua_State* luaState)
+    {
+	World* world = getContext(luaState)->world;
+	SpriteManager::Instance instance = world->sprites.lookup({ (uint32_t)lua_tointeger(luaState, 1) });
+	glm::vec2* origin = (glm::vec2*)lua_touserdata(luaState, 2);
+
+	world->sprites.setOrigin(instance, *origin);
+	return 0;
+    }
+
+    static int setSize(lua_State* luaState)
+    {
+	World* world = getContext(luaState)->world;
+	SpriteManager::Instance instance = world->sprites.lookup({ (uint32_t)lua_tointeger(luaState, 1) });
+	glm::vec2* size = (glm::vec2*)lua_touserdata(luaState, 2);
+
+	world->sprites.setSize(instance, *size);
+	
+	return 0;
+    }
 
     static int setColor(lua_State* luaState)
     {
-	World* world = getState(luaState)->world;
+	World* world = getContext(luaState)->world;
 	SpriteManager::Instance instance = world->sprites.lookup({ (uint32_t)lua_tointeger(luaState, 1) });
-
 	glm::vec4* color = (glm::vec4*)lua_touserdata(luaState, 2);
     
 	world->sprites.setColor(instance, *color);	
@@ -1116,18 +1135,17 @@ namespace api
 
     static int getColor(lua_State* luaState)
     {
-	World* world = getState(luaState)->world;
+	World* world = getContext(luaState)->world;
 	SpriteManager::Instance instance = world->sprites.lookup({ (uint32_t)lua_tointeger(luaState, 1) });
 	
 	glm::vec4 color = world->sprites.getColor(instance);
-
 	toColor(luaState, color);
 	return 1;
     }
 
     static int setMass(lua_State* luaState)
     {
-	World* world = getState(luaState)->world;
+	World* world = getContext(luaState)->world;
 	PhysicsManager::Instance instance = world->physics.lookup({ (uint32_t)lua_tointeger(luaState, 1) });
 	float mass = (float)lua_tonumber(luaState, 2);
 
@@ -1137,14 +1155,12 @@ namespace api
 
     static int addForce(lua_State* luaState)
     {
-	World* world = getState(luaState)->world;
+	World* world = getContext(luaState)->world;
 	PhysicsManager::Instance instance = world->physics.lookup({ (uint32_t)lua_tointeger(luaState, 1) });
 
-	// TODO: Replace with userobject for Vec2.
-	float fx = (float)lua_tonumber(luaState, 2);
-	float fy = (float)lua_tonumber(luaState, 3);
-    
-	world->physics.addForce(instance, glm::vec2(fx, fy));
+	glm::vec2* v = (glm::vec2*)lua_touserdata(luaState, 2);
+	
+	world->physics.addForce(instance, *v);
 	return 0;
     }
 
@@ -1156,10 +1172,12 @@ namespace api
 	{ "printEntity", printEntity},
 	{ "addSprite", addSprite},
 	{ "addPhysics", addPhysics},
-	{ "addCircleShape", addCircleShape},
-	{ "addPolygonShape", addPolygonShape},
+	{ "addCollision", addCollision},
+	{ "setCircleShape", addCircleShape},
+	{ "setPolygonShape", addPolygonShape},
 	{ "addResponder", addResponder},
 	{ "setType", setType},
+	{ "getType", getType},
 	{ "setMask", setMask},
 	{ "setOffset", setOffset},
 	{ "setRadius", setRadius},
@@ -1173,6 +1191,8 @@ namespace api
 	{ "setScale", setScale},
 	{ "getScale", getScale},
 	{ "setTexture", setTexture},
+	{ "setSize", setSize},
+	{ "setOrigin", setOrigin},
 	{ "setColor", setColor},
 	{ "getColor", getColor},
 	{ "setMass", setMass},
@@ -1181,17 +1201,16 @@ namespace api
     };
 
    /*
-      NOTE: FONT FUNCTIONS
-    */
-    
+      FONT FUNCTIONS
+    */    
     static int fontWrite(lua_State* luaState)
     {
-	GameState* state = getState(luaState);
+	VoidstormContext* context = getContext(luaState);
 	const char* text = lua_tostring(luaState, 1);
 	glm::vec2* position = (glm::vec2*)lua_touserdata(luaState, 2);
 	bool32 mode = lua_toboolean(luaState, 3);
 
-	state->renderer->write(text, *position, mode);
+	context->renderer->write(text, *position, mode);
 
 	return 0;
     };
@@ -1204,37 +1223,36 @@ namespace api
 
 
     /*
-      NOTE: RENDER FUNCTIONS
-    */
-    
+      ENGINE FUNCTIONS
+    */    
     static int setPostProcessParams(lua_State* luaState)
     {
-	GameState* state = getState(luaState);
+	VoidstormContext* context = getContext(luaState);
 
 	float gaussBlurSigma = (float)lua_tonumber(luaState, 1);
 	float gaussBlurTapSize = (float)lua_tonumber(luaState, 2);
 	float exposure = (float)lua_tonumber(luaState, 3);
 
-	state->renderer->setPostProcessParams(gaussBlurSigma, gaussBlurTapSize, exposure);
+	context->renderer->setPostProcessParams(gaussBlurSigma, gaussBlurTapSize, exposure);
 
 	return 0;
     }
 
     static int getResolution(lua_State* luaState)
     {
-	GameState* state = getState(luaState);
+	VoidstormContext* context = getContext(luaState);
 
-	toVec2(luaState, state->renderer->getResolution());
+	toVec2(luaState, context->renderer->getResolution());
 	return 1;
     }
 
     static int setCameraPosition(lua_State* luaState)
     {
-	GameState* state = getState(luaState);
+	VoidstormContext* context = getContext(luaState);
 
 	glm::vec2* pos = (glm::vec2*)lua_touserdata(luaState, 1);
     
-	state->renderer->setCameraPosition(*pos);
+	context->renderer->setCameraPosition(*pos);
 
 	return 0;
     }
@@ -1273,6 +1291,8 @@ namespace api
 
 	lua_newtable(luaState);
 	luaL_register(luaState, 0, texture_functions_m);
+	lua_pushvalue(luaState, -1);
+	lua_setfield(luaState, -2, "__index");
 	lua_setglobal(luaState, "texture_m");
 
 	lua_newtable(luaState);
@@ -1281,9 +1301,6 @@ namespace api
 	lua_setfield(luaState, -2, "__index");
 	lua_setglobal(luaState, "particle_m");
     
-	lua_pop(luaState, 1);
-
-	
-	
+	lua_pop(luaState, 1);	
     }    
 }

@@ -13,7 +13,7 @@ struct Vertex1P1UV
     glm::vec2 uv;
 };
 
-Renderer::Renderer(HeapAllocator* heap, dcutil::Stack* stack)
+Renderer::Renderer(HeapAllocator* heap, dcutil::Stack* perm, dcutil::Stack* world)
 {
     resolution.x = 1280;
     resolution.y = 720;
@@ -57,10 +57,10 @@ Renderer::Renderer(HeapAllocator* heap, dcutil::Stack* stack)
     SDL_GetWindowWMInfo(window, &info);
     HWND hwnd = info.info.win.window;
     
-    renderCtx = new(stack->alloc(sizeof(dcfx::Context))) dcfx::Context(hwnd, heap);
-    spritebatch = new(stack->alloc(sizeof(SpriteBatch)))  SpriteBatch(renderCtx);
-    linerenderer = new(stack->alloc(sizeof(LineRenderer)))  LineRenderer(renderCtx);
-    particle = new(stack->alloc(sizeof(ParticleEngine))) ParticleEngine(stack, renderCtx, spritebatch);
+    renderCtx = new(perm->alloc(sizeof(dcfx::Context))) dcfx::Context(hwnd, heap);
+    spritebatch = new(perm->alloc(sizeof(SpriteBatch)))  SpriteBatch(renderCtx);
+    linerenderer = new(perm->alloc(sizeof(LineRenderer)))  LineRenderer(renderCtx);
+    particle = new(perm->alloc(sizeof(ParticleEngine))) ParticleEngine(world, renderCtx, spritebatch);
     
     Vertex1P1UV* verts = (Vertex1P1UV*)renderCtx->frameAlloc(4 * sizeof(Vertex1P1UV));
     verts[0].pos = glm::vec3(-1.0f, -1.0f, 0.0f);
@@ -97,7 +97,7 @@ Renderer::Renderer(HeapAllocator* heap, dcutil::Stack* stack)
     tapSizeUniform = renderCtx->createUniform("TapSize", dcfx::UniformType::FLOAT, 1);
     exposureUniform = renderCtx->createUniform("Exposure", dcfx::UniformType::FLOAT, 1);
 
-    // TODO: Use a resource manager for shaders so we don't have to load the same once over again..
+    // TODO (daniel): Use a resource manager for shaders so we don't have to load the same once over again..
     dcfx::ProgramDesc desc;
     desc.m_vert = loadShader(renderCtx, "fullscreenquad.vert", dcfx::ShaderType::VERTEX);
     desc.m_frag = loadShader(renderCtx, "blur_vertical.frag", dcfx::ShaderType::FRAGMENT);
@@ -210,6 +210,8 @@ void Renderer::render(World* world)
 	Entity e = world->sprites.data.entities[i];
 	glm::vec4 color = world->sprites.data.color[i];
 	Texture* texture = world->sprites.data.texture[i];
+	glm::vec2 size = world->sprites.data.size[i];
+	glm::vec2 origin = world->sprites.data.origin[i];
 	
 	TransformManager::Instance transform = world->transforms.lookup(e);
 	assert(transform.index != 0);
@@ -224,9 +226,10 @@ void Renderer::render(World* world)
 	float scale = (1.0f/depth)*cscale;
 	
 	spritebatch->setDestination(glm::vec4(projectedXY.x, projectedXY.y,
-					      texture->width*scale, texture->height*scale));
+					      size.x*scale, size.y*scale));
 	spritebatch->setRotation(rotation);
-	spritebatch->setOrigin(glm::vec2(0.5,0.5));		
+	spritebatch->setOrigin(origin);
+	if(texture != NULL)
 	spritebatch->setTexture(texture->handle);
 	spritebatch->setSource(glm::vec4(0,0,1,1));
 	spritebatch->setColor(color);

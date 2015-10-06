@@ -222,7 +222,7 @@ void Dbvt::visualize(LineRenderer* lineRenderer)
 	if(node == nullptr)
 	    continue;
 	
-	lineRenderer->drawAABB(node->aabb);
+	lineRenderer->drawAABB(node->aabb, glm::vec4(1,1,0,1));
 
 	stack[count++] = node->child1;
 	stack[count++] = node->child2;
@@ -340,12 +340,6 @@ void PhysicsWorld::simulate(World* world, float dt)
 
 	ContactResult result;
 
-	if(shapeData.shape == ShapeType::CIRCLE)
-	    linerenderer->drawCircle(newPosition, shapeData.data.circle->radius);
-
-	if(shapeData.shape == ShapeType::POLYGON)
-	    linerenderer->drawPolygon(*shapeData.data.polygon);
-	
 	// Itterations.
 	for(int k = 0; k < 1; ++k)
 	{
@@ -417,8 +411,7 @@ void PhysicsWorld::simulate(World* world, float dt)
 		newPosition += deltaVel;
 		
 		break;
-	    }
-		
+	    }		
 	}
 
 	glm::vec2 displacement = newPosition - pos;
@@ -430,7 +423,7 @@ void PhysicsWorld::simulate(World* world, float dt)
 
 	    world->collisions.resetContacts(instance);
 	    
-	    Contact contacts[100];
+	    Contact contacts[1024];
 	    int contactsFound = tree.query(node, contacts);
 
 	    world->collisions.addContacts(instance, contacts, contactsFound);

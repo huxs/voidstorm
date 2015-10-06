@@ -36,13 +36,15 @@ class EntityManager
 {
 public:
     EntityManager() : generationCount(0), freeIndicesCount(0) {}
+
+    void reset();
     
     Entity create();
     void destroy(Entity e);
     bool alive(Entity e);
 
     int getNrOfEntities();
-	
+    
 private:
     uint8_t generation[VOIDSTORM_ENTITY_MAX_COUNT];
     uint32_t generationCount;

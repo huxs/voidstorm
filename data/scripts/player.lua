@@ -1,19 +1,88 @@
-function Player:new(pos)
+function Bullet.new(self, parent, dir)
 
-   Sprite.new(self, type.player, bit.bor(type.wall, type.enemy), pos, 20)
+   self.parent = parent
 
-   es.addResponder(self.entity)
+   local scale = 0.5
 
-   self:setTexture(texture.new("../../data/textures/player.dds"))
+   MovableCollidableSprite.new(self, parent:getPosition() + dir * 50, type.playerbullet, bit.bor(type.enemy, type.wall))
+   self:setCircleShape((boulderTexture:size().x / 2) * scale)
+   self:addResponder()
+   self:setTextureAndSize(boulderTexture)
+   self:setColor(player:getColor())
+   self:setMass(0.1)   
+   self:setScale(scale)
+
+   testeffect.emitters[1].startColor = parent:getColor()
+   
+   self.effect = particle.new(testeffect)
+   self.effect:play()
+
+end
+
+function Bullet:destroy()
+
+   particle.delete(self.effect)
+
+   Sprite.destroy(self)
+
+end
+
+function Bullet:update(index)
+
+   -- Update the particle emitter to follow the bullet.
+   self.effect:setPosition(self:getPosition())
+
+   -- Returns a 2D-table with the layout: table = { { entity0, pos0 }, { entity1, pos1 }, ... }
+   local collidedEntities = es.getCollidedEntity(self.entity)
+   for i = #collidedEntities, 1, -1 do
+
+      local entity = collidedEntities[i][1]
+      local pos = collidedEntities[i][2]
+      local sprite = sprites[entity]
+      if sprite ~= nil then	 
+	 
+	 local p = particle.new(explosion)
+	 p:setPosition(pos)
+	 p:play()
+
+	 if sprite:getType() ~= type.wall then
+	    sprite:destroy()
+	 end
+
+      end
+   end
+
+   -- If we hit something we remove the bullet from our parents bullet list.
+   if #collidedEntities > 0 then
+      table.remove(self.parent.bullets, index)
+      self:destroy()
+   end
+
+end
+
+function Player.new(self, pos)
+
+   MovableCollidableSprite.new(self, pos, type.player, bit.bor(type.wall, type.enemy))
+   self:setCircleShape(20)
+   self:addResponder()
+   self:setTextureAndSize(texture.new("../../data/textures/player.dds"))
    self:setColor(color.toRGBFromHSV(color.new(0,1,1,1)))
    self:setMass(1)  
-   self:setOffset(0,0)
+
    self.cooldown = 0
    self.bullets = {}
    self.speed = 400
 
    self.thruster = particle.new(thruster)
    self.thruster:play()
+
+end
+
+function Player.destroy(self)
+
+   print("Hello?")
+
+   Sprite.destroy(self)
 
 end
 
@@ -35,8 +104,9 @@ function Player.update(self)
 
    local leftStick = input.getLeftStick()
    local rightStick = input.getRightStick()
-   
-   es.addForce(self.entity, leftStick.x * self.speed, leftStick.y * self.speed)
+
+   -- Move the player
+   self:addForce(leftStick * self.speed)
 
    local ls = #leftStick  
    if ls > 0.3 then
@@ -62,63 +132,41 @@ function Player.update(self)
 
    thruster:store()
 
+   -- Shoot bullets.
    if self.cooldown <= 0 then
-      
      if #rightStick > 0.3 then
-
-	 local dir = rightStick.normalize	 
-	 
-	 local bullet = Bullet(self, player:getPosition() + dir * 50)
-
+	 local dir = rightStick.normalize	 	 
+	 local bullet = Bullet(self, dir)
+	 bullet:addForce(dir * 800)
 	 table.insert(self.bullets, bullet)
-	 
-	 es.addForce(bullet.entity, dir.x * 800, dir.y * 800)
-
 	 self.cooldown = 0.1
       end
-
    else
-
       self.cooldown = self.cooldown - dt
    end
 
+   -- Update bullets in reverse in case of removal.
    for i = #self.bullets, 1, -1 do
-
-      local bullet = self.bullets[i]
-      
-      bullet:update()
-      
-      local bpos = bullet:getPosition()
-
-      local collidedEntities = es.getCollidedEntity(bullet.entity)
-      for j = #collidedEntities, 1, -1 do
-	 local entity = collidedEntities[j][1]
-	 local pos = collidedEntities[j][2]
-	 local obj = objects[entity]
-	 if obj ~= nil then	 
-	    local p = particle.new(explosion)
-	    p:setPosition(vec2.new(pos.x, pos.y))
-	    p:play()
-	    obj:destroy()
-	 end
-      end
-
-      if #collidedEntities > 0 then
-	 table.remove(self.bullets, i)
-	 particle.delete(bullet.effect)
-	 bullet:destroy()
-      end
-      
+      local bullet = self.bullets[i]      
+      bullet:update(i)
    end
 
+   -- Destroy sprites we collide with.
    local collidedEntities = es.getCollidedEntity(self.entity)
-   for i,v in ipairs(collidedEntities) do
-      local obj = objects[v[1]]
-      if obj ~= nil then
+   for i = #collidedEntities, 1, -1 do
+
+      local entity = collidedEntities[i][1]
+      local pos = collidedEntities[i][2]
+      local sprite = sprites[entity]
+      if sprite ~= nil then
+
 	 local p = particle.new(explosion)
-	 p:setPosition(vec2.new(v[2].x, v[2].y))
+	 p:setPosition(pos)
 	 p:play()
-	 obj:destroy()
+
+	 if sprite:getType() ~= type.wall then
+	    sprite:destroy()
+	 end
       end
    end 
 

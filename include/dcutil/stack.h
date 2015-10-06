@@ -27,10 +27,12 @@ namespace dcutil
 	inline size_t getTotalSize();
 	inline size_t getAllocatedSize();
 
-    private:
-	void* m_base;
+
 	void* m_ptr;
 	size_t m_size;
+	
+    private:
+	void* m_base;
 	size_t m_used;
     };
 
@@ -49,6 +51,7 @@ namespace dcutil
     void Stack::reset()
     {
 	m_ptr = m_base;
+	m_used = 0;
     }
 
     size_t Stack::getTotalSize()

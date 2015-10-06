@@ -7,7 +7,7 @@ enum SpriteSortMode
     FRONTTOBACK
 };
 
-// TODO:
+// NOTE: Padding issues on android.
 // XXX0 YY00 ZZZZ
 // XXXX YYY0 ZZ00
 
@@ -96,7 +96,7 @@ private:
     void bufferSprite(int vertices, SpriteInfo* sprite, SpriteVertex* data, int index);
     void sortSprites();
 	
-    static const int BatchSize = 32768;
+    static const int BatchSize = 65536;
     static const int QueueSize = 4096;
     static const int VerticesPerSprite = 4;
     static const int IndicesPerSprite = 6;
@@ -118,7 +118,7 @@ private:
     SpriteSortMode sortMode;
     uint32_t blendState;
 
-    // TODO: Later we probely want to support users passing fonts.
+    // TODO (daniel): Later we probely want muliple fonts.
     SpriteFont defaultFont;
 };
 

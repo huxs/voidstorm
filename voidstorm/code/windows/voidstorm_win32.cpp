@@ -44,11 +44,6 @@ bool initializeMemory(GameMemory* memory)
 #else
 	INT_PTR BaseAddress = 0;
 #endif
-    /*
-    memory->permanentStorageSize = VOIDSTORM_APPLICATION_HEAP
-	+ VOIDSTORM_RENDER_HEAP
-	+ VOIDSTORM_APPLICATION_PERMANENT_STACK;
-    */
 
     memory->permanentStorageSize = PERMANENT_STORAGE_SIZE;
     memory->transientStorageSize = TRANSIENT_STORAGE_SIZE;

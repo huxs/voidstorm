@@ -82,8 +82,7 @@ static ContactResult circleVsPolygon(World* world, glm::vec2 deltaVel, Transform
     float u1 = glm::dot(center - v1, glm::normalize(v0 - v1));
     
     // Center is inside the polygon.
-    // TODO: Add epsiplon constant.
-    if(separation < 0.000001f)
+    if(separation < VOIDSTORM_EPSILON)
     {
 	result.hit = true;
 	result.normal = polygon->normals[normalIndex];
@@ -165,8 +164,8 @@ glm::vec2 PolygonShape::computeCentroid()
 	glm::vec2 e0 = p1 - p0;
 	glm::vec2 e1 = p2 - p1;
 
-	/* Returns the magnitude of the Z-vector after cross with e0,e1 treating the vectors 
-	   on a plane in 3D. Thus the result is a scalar. */			       
+	/* NOTE (daniel):Returns the magnitude of the Z-vector after cross with e0,e1
+	   treating the vectors on a plane in 3D. Thus the result is a scalar. */       
 	float D = e0.x * e1.y - e0.y * e1.x;
 
 	float triangleArea = 0.5f * D;
@@ -175,7 +174,7 @@ glm::vec2 PolygonShape::computeCentroid()
 	c += triangleArea * Inv3 * (p0 + p1 + p2);
     }
 
-    // TODO: Check area against a small value!
+    assert(area > VOIDSTORM_EPSILON);
     c *= 1.0f / area;
     return c;
 }
@@ -201,7 +200,7 @@ void PolygonShape::set(glm::vec2* _vertices, uint16_t _count)
 {
     assert(_count >= 3 && _count <= VOIDSTORM_MAX_POLYGON_VERTICES);
 
-    // TODO: Remove duplicates.
+    // TODO (daniel): Remove duplicates.
     glm::vec2* ps = _vertices;
     int n = (int)_count;
 
@@ -308,7 +307,7 @@ void PolygonShape::setAsBox(float width, float height)
     centroid = computeCentroid();
 }
 
-// TODO: Rotation!
+// TODO (daniel): Add support for rotated boxes.
 void PolygonShape::setAsBox(float width, float height, const glm::vec2& center)
 {
     count = 4;

@@ -1,25 +1,30 @@
-function Sprite:new(type, mask, pos, radius)
+-- Sprite = Sprite
+-- Sprite, Collision = CollidableSprite
+-- Sprite, Collision, Physics = MovableCollidableSprite
+
+dofile "class.lua"
+
+Sprite = class(nil)
+
+function Sprite.new(self, pos)
 
    self.entity = es.createEntity()
    
    es.setPosition(self.entity, pos)
-
    es.addSprite(self.entity)
-   es.addPhysics(self.entity)
-   es.addCircleShape(self.entity, type, mask, radius)
 
-   table.insert(objects, self.entity, self)
+   table.insert(sprites, self.entity, self)
 
 end
 
 function Sprite:destroy()
 
-   objects[self.entity] = nil
+   sprites[self.entity] = nil
    
    es.destroyEntity(self.entity)
    
 end
-   
+
 function Sprite:setPosition(pos)
 
    es.setPosition(self.entity, pos)
@@ -43,6 +48,7 @@ function Sprite:getRotation()
    return es.getRotation(self.entity)
 
 end
+
 
 function Sprite:setDepth(value)
 
@@ -68,39 +74,29 @@ function Sprite:getScale()
 
 end
 
-function Sprite:setType(type)
-
-   es.setType(self.entity, type)
-
-end
-
-function Sprite:setMask(mask)
-
-   es.setMask(self.entity, mask)
-
-end
-
-function Sprite:setOffset(x, y)
-
-   es.setOffset(self.entity, y)
-
-end
-
-function Sprite:setRadius(r)
-
-   es.setRadius(self.entity, r)
-
-end
-
-function Sprite:setMass(mass)
-
-   es.setMass(self.entity, mass)
-
-end
-
 function Sprite:setTexture(texture)
 
    es.setTexture(self.entity, texture)
+
+end
+
+function Sprite:setSize(size)
+
+   es.setSize(self.entity, size)
+
+end
+
+function Sprite:setTextureAndSize(texture)
+
+   es.setTexture(self.entity, texture)
+
+   es.setSize(self.entity, texture:size())
+
+end
+
+function Sprite:setOrigin(origin)
+
+   es.setOrigin(self.entity, origin)
 
 end
 
@@ -128,9 +124,76 @@ function Sprite:animateHue()
    
 end
 
-function Sprite:writeID()
+CollidableSprite = class(Sprite)
 
-   debugSprite(self)
+function CollidableSprite.new(self, pos, type, mask)
+
+   Sprite.new(self, pos)
+
+   es.addCollision(self.entity, type, mask)
    
 end
 
+function CollidableSprite:setCircleShape(radius)
+
+   es.setCircleShape(self.entity, radius)
+   
+end
+
+function CollidableSprite:addResponder()
+
+   es.addResponder(self.entity)
+
+end
+
+function CollidableSprite:setType(type)
+
+   es.setType(self.entity, type)
+
+end
+
+function CollidableSprite:getType()
+
+   return es.getType(self.entity)
+
+end
+
+function CollidableSprite:setMask(mask)
+
+   es.setMask(self.entity, mask)
+
+end
+
+function CollidableSprite:setOffset(x, y)
+
+   es.setOffset(self.entity, y)
+
+end
+
+function CollidableSprite:setRadius(r)
+
+   es.setRadius(self.entity, r)
+
+end
+
+MovableCollidableSprite = class(CollidableSprite)
+
+function MovableCollidableSprite.new(self, pos, type, mask, radius)
+
+   CollidableSprite.new(self, pos, type, mask, radius)
+
+   es.addPhysics(self.entity)
+
+end
+
+function MovableCollidableSprite:setMass(mass)
+
+   es.setMass(self.entity, mass)
+
+end
+
+function MovableCollidableSprite:addForce(force)
+
+   es.addForce(self.entity, force)
+
+end
