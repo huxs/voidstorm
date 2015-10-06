@@ -341,7 +341,7 @@ void PhysicsWorld::simulate(World* world, float dt)
 	ContactResult result;
 
 	// Itterations.
-	for(int k = 0; k < 1; ++k)
+	for(int k = 0; k < 3; ++k)
 	{
 	    Contact* c = &world->collisions.data.contact[i];	    
 	    while(c)
