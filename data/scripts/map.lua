@@ -6,6 +6,8 @@ function Map.start()
 
    Map.size = vec2.new(3000, 3000)
    Map.wall_width = 50
+   Map.effect = particle.new(starsystem)
+   Map.effect:play()
 
    -- Create player.
    player = Player(vec2.new(50, 300))

@@ -12,8 +12,9 @@ function Bullet.new(self, parent, dir)
    self:setMass(0.1)   
    self:setScale(scale)
 
-   testeffect.emitters[1].startColor = parent:getColor()
-   
+   testeffect.emitters[1].colorMin = parent:getColor()
+   testeffect.emitters[1].colorMax = parent:getColor()   
+
    self.effect = particle.new(testeffect)
    self.effect:play()
 
@@ -80,8 +81,6 @@ end
 
 function Player.destroy(self)
 
-   print("Hello?")
-
    Sprite.destroy(self)
 
 end
@@ -97,10 +96,14 @@ function Player.update(self)
    self.thruster:setDepth(player:getDepth())
 
    -- Override thruster description.
-   thruster.emitters[1].startColor = player:getColor()
-   thruster.emitters[2].startColor = player:getColor()
-   thruster.emitters[3].startColor = player:getColor()
-   thruster.emitters[4].startColor = player:getColor()
+   thruster.emitters[1].colorMin = player:getColor()
+   thruster.emitters[2].colorMin = player:getColor()
+   thruster.emitters[3].colorMin = player:getColor()
+   thruster.emitters[4].colorMin = player:getColor()
+   thruster.emitters[1].colorMax = player:getColor()
+   thruster.emitters[2].colorMax = player:getColor()
+   thruster.emitters[3].colorMax = player:getColor()
+   thruster.emitters[4].colorMax = player:getColor()
 
    local leftStick = input.getLeftStick()
    local rightStick = input.getRightStick()

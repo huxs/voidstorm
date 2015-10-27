@@ -43,6 +43,8 @@ namespace dcfx
 	RGBA8,
 	RGBA32F,
 	RG16F,
+	RG32F,
+	R32F,
 	D32F
     };
 

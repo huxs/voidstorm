@@ -13,14 +13,14 @@ struct ResourceNode
 template<class T>
 struct ResourceMap
 {
-    ResourceMap(dcutil::Stack* _stack) : stack(_stack) {}
+    ResourceMap(dcutil::StackAllocator* _stack) : stack(_stack) {}
 				       
     T* add(const char* name);
     T* remove(T* resource);
     T* lookup(const char* name);
 
     ResourceNode<T> map[100];
-    dcutil::Stack* stack;
+    dcutil::StackAllocator* stack;
 };
 
 template<class T>
@@ -34,13 +34,13 @@ T* ResourceMap<T>::add(const char* name)
     ResourceNode<T>* node = map + slot;
     do
     {
-	if(node->hash == hash) // NOTE: If resource already exists.
+	if(node->hash == hash) // If resource already exists
 	{
 	    result = node->resource;
 	    break;
 	}
 	
-	if(node->resource && !node->next) // NOTE: Node exist but next does not, extend the internal chain.
+	if(node->resource && !node->next) // Node exist but next does not, extend the internal chain
 	{
 	    node->next = (ResourceNode<T>*)stack->alloc(sizeof(ResourceNode<T>));
 
@@ -50,7 +50,7 @@ T* ResourceMap<T>::add(const char* name)
 	    node->next = nullptr;
 	}
 
-	if(node->resource == nullptr) // NOTE: Found a empty node, store the resource.
+	if(node->resource == nullptr) // Found a empty node, store the resource
 	{
 	    result = (T*)stack->alloc(sizeof(T));
 	    node->resource = result;
@@ -118,7 +118,7 @@ struct Texture
 class TextureManager
 {
 public:
-    TextureManager(dcfx::Context* _renderCtx, dcutil::Stack* _stack)
+    TextureManager(dcfx::Context* _renderCtx, dcutil::StackAllocator* _stack)
 	    : renderCtx(_renderCtx), textures(_stack) {}
 
     Texture* load(const char* name);
@@ -141,6 +141,8 @@ struct ParticleEmitterDescription
     float sizeMax;
     float rotationMin;
     float rotationMax;
+    glm::vec4 colorMin;
+    glm::vec4 colorMax;
     glm::vec4 startColor;
     glm::vec4 endColor;
     glm::vec2 force;
@@ -162,23 +164,23 @@ struct ParticleEffectDescription
 class ParticleEffectManager
 {
 public:
-    ParticleEffectManager(dcutil::Stack* _stack)
+    ParticleEffectManager(dcutil::StackAllocator* _stack)
 	    : stack(_stack), effects(_stack) {}
 
-    // NOTE: Loads a particle effect description off the lua stack.
+    // NOTE: Loads a particle effect description off the lua stack
     ParticleEffectDescription* load(lua_State* luaState);
     
     void remove(ParticleEffectDescription* effect);
     void clean();
 
 private:
-    dcutil::Stack* stack;
+    dcutil::StackAllocator* stack;
     ResourceMap<ParticleEffectDescription> effects;
 };
 
 struct ResourceManager
 {
-    ResourceManager(dcutil::Stack* stack, dcfx::Context* renderCtx)
+    ResourceManager(dcutil::StackAllocator* stack, dcfx::Context* renderCtx)
 	    : textures(renderCtx, stack), effects(stack)
 	{}
 

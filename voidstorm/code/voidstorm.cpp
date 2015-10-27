@@ -193,12 +193,13 @@ int main(int argv, char** argc)
 	g_allocator = &globalAllocator;
 
 	uint8_t* permStackPtr = (uint8_t*)gameMemory.permanentStorage + VOIDSTORM_APPLICATION_HEAP_SIZE + VOIDSTORM_RENDER_HEAP_SIZE;	
-	dcutil::Stack* permanentStack = new(permStackPtr) dcutil::Stack(
-	    permStackPtr + sizeof(dcutil::Stack),
+
+	dcutil::StackAllocator* permanentStack = new(permStackPtr) dcutil::StackAllocator(
+	    permStackPtr + sizeof(dcutil::StackAllocator),
 	    VOIDSTORM_APPLICATION_PERMANENT_STACK_SIZE);
 
 	uint8_t* worldStackPtr = (uint8_t*)permStackPtr + VOIDSTORM_APPLICATION_PERMANENT_STACK_SIZE;
-	dcutil::Stack* worldStack = new(worldStackPtr) dcutil::Stack(worldStackPtr + sizeof(dcutil::Stack), VOIDSTORM_APPLICATION_PERMANENT_STACK_SIZE);
+	dcutil::StackAllocator* worldStack = new(worldStackPtr) dcutil::StackAllocator(worldStackPtr + sizeof(dcutil::StackAllocator), VOIDSTORM_APPLICATION_PERMANENT_STACK_SIZE);
 
 	HeapAllocator renderAllocator(renderSpace);	
 	Renderer* renderer = new(permanentStack->alloc(sizeof(Renderer))) Renderer(&renderAllocator, permanentStack, worldStack);
@@ -219,7 +220,7 @@ int main(int argv, char** argc)
 #endif
     
 	LuaAllocatorUserData allocatorUd;
-	allocatorUd.pool = new(permanentStack->alloc(sizeof(dcutil::Pool))) dcutil::Pool(
+	allocatorUd.pool = new(permanentStack->alloc(sizeof(dcutil::PoolAllocator))) dcutil::PoolAllocator(
 	    permanentStack->alloc(VOIDSTORM_SCRIPT_ELEMENT_SIZE * VOIDSTORM_SCRIPT_ELEMENT_COUNT),
 	    VOIDSTORM_SCRIPT_ELEMENT_SIZE,
 	    VOIDSTORM_SCRIPT_ELEMENT_COUNT);
@@ -314,6 +315,8 @@ int main(int argv, char** argc)
 	    gameInput.dt = (float)((currentTime - prevTime) / (double)SDL_GetPerformanceFrequency());
 	    prevTime = currentTime;
 
+		//printf("dt %f\n", gameInput.dt);
+
 	    //gameInput.currentController->rightStickX = 0.0f;
 	    //gameInput.currentController->rightStickY = 0.0f;
 	    //gameInput.dt = 1 / 60.0f;
@@ -378,7 +381,7 @@ int main(int argv, char** argc)
 	    {
 		if(playbackInput(&gameMemory, &rstate, &gameInput))
 		{
-		    // NOTE (daniel): Reload the script files incase the scripts are modified during playback.
+		    // NOTE (daniel): Reload the script files incase the scripts are modified during playback
 		    for (size_t i = 0; i < luaFiles.size(); ++i)
 		    {
 			LuaFile& file = luaFiles[i];
@@ -494,7 +497,7 @@ int main(int argv, char** argc)
 	    }
 
 	    int a = (int)permanentStack->getAllocatedSize() / Megabytes(1);
-	    int b = (int)permanentStack->getTotalSize() / Megabytes(1);
+	    int b = (int)permanentStack->m_size / Megabytes(1);
 	
 	    sprintf(messageOutput, "Permanent Stack Used:%d Mb Size:%d Mb %0.2f%%\n", a, b, (a/(float)b)*100.0f);
 	    renderer->write(messageOutput, glm::vec2(500, 10), false);

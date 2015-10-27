@@ -1,4 +1,4 @@
--- Thruster effect descripton to be used by the player ship.
+-- Thruster effect descripton used by the player ship
 thruster = ParticleEffect("thruster")
 
 local lifetimeMin = 0.1
@@ -50,7 +50,7 @@ thruster_emitter3.position = leftPosition
 thruster_emitter3.texture = thrusterTexture
 thruster:store()
 
--- Effect descripton for a trailing particle effect following bullets.
+-- Effect descripton for a trailing particle effect following bullets
 testeffect = ParticleEffect("testeffect")
 testeffect_emitter0 = testeffect:addEmitter()
 testeffect_emitter0.particlesPerEmit = 1
@@ -70,7 +70,7 @@ testeffect_emitter0.relative = true
 testeffect_emitter0.texture = texture.new("diamond.dds")
 testeffect:store()
 
--- Explosion effect description when an enemy explodes.
+-- Explosion effect description when an enemy explodes
 explosion = ParticleEffect("explosion")
 explosion_emitter0 = explosion:addEmitter()
 explosion_emitter0.particlesPerEmit = 36
@@ -82,6 +82,8 @@ explosion_emitter0.sizeMin = 0.2
 explosion_emitter0.sizeMax = 0.5
 explosion_emitter0.rotationMin = 0.0
 explosion_emitter0.rotationMax = 3.14
+explosion_emitter0.colorMin = color.new(1,0,0,1)
+explosion_emitter0.colorMax = color.new(1,0,0,1)
 explosion_emitter0.startColor = color.new(1,0,0,1)
 explosion_emitter0.endColor = color.new(1,1,1,0)
 explosion_emitter0.force = vec2.new(1000,1000)
@@ -91,4 +93,24 @@ explosion_emitter0.relative = true
 explosion_emitter0.texture = texture.new("boulder.dds")
 explosion:store()
 
+local starsystem_emitterCount = 17;
 
+starsystem = ParticleEffect("starsystem")
+for i = 1, starsystem_emitterCount, 1 do
+      local emitter = starsystem:addEmitter()
+      emitter.particlesPerEmit = 5
+      emitter.lifetime = 0 -- infinite
+      emitter.spawnTime = 0 -- only initial spawn
+      emitter.lifetimeMin = 0 -- live forever
+      emitter.lifetimeMax = 0
+      emitter.sizeMin = 1
+      emitter.sizeMax = 1
+      emitter.colorMin = color.new(0,0,0,1)
+      emitter.colorMax = color.new(1,1,1,1)
+      emitter.force = vec2.new(0.01,0.01)
+      emitter.relative = false
+      emitter.spread = 360
+      emitter.position = vec2.new(100 * i, 100 * i)
+      emitter.texture = texture.new("pixel.dds")
+end
+starsystem:store()

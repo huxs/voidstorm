@@ -9,7 +9,7 @@ Dbvt::Dbvt(void* mem)
 
 DbvtNode* Dbvt::createProxy(Entity entity, const AABB& aabb)
 {
-    DbvtNode* node = new(allocator.alloc()) DbvtNode(entity, aabb);
+    DbvtNode* node = new(allocator.alloc(0)) DbvtNode(entity, aabb);
 
     insertNode(node);
     return node;
@@ -165,7 +165,7 @@ void Dbvt::insertNode(DbvtNode* nodeToInsert)
     AABB newParentAABB;
     newParentAABB.combine(nodeToInsertAABB, sibling->aabb);
 
-    DbvtNode* newParent = new(allocator.alloc()) DbvtNode(Entity_Null, newParentAABB);
+    DbvtNode* newParent = new(allocator.alloc(0)) DbvtNode(Entity_Null, newParentAABB);
     newParent->parent = oldParent;
 
     if(oldParent != nullptr)
@@ -300,7 +300,7 @@ int Dbvt::query(DbvtNode* node, Contact* contacts)
     return contactCounter;
 }
 
-PhysicsWorld::PhysicsWorld(dcutil::Stack* stack, LineRenderer* _linerenderer)
+PhysicsWorld::PhysicsWorld(dcutil::StackAllocator* stack, LineRenderer* _linerenderer)
 	:
 	tree(stack->alloc(sizeof(DbvtNode) * DBVT_NODE_POOL_SIZE)),
 	linerenderer(_linerenderer)

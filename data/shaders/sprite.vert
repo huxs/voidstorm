@@ -1,6 +1,6 @@
 #version 330
 
-uniform mat4 g_view;
+uniform mat4 g_View;
 
 in vec3 in_position;
 in vec2 in_texCoord;
@@ -14,5 +14,5 @@ void main()
     fs_texCoord = in_texCoord;
     fs_color = in_color;
 
-    gl_Position = g_view * vec4(in_position, 1.0f);
+    gl_Position = g_View * vec4(in_position, 1.0f);
 }

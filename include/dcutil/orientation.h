@@ -11,10 +11,10 @@ namespace dcutil
     class Orientation
     {
     public:
-	DCUTIL_API void setOrientation(glm::mat3& rotationMatrix);
+	DCUTIL_API void setOrientation(const glm::mat3& rotationMatrix);
 	DCUTIL_API void setOrientation(float x, float y, float z);
-	DCUTIL_API void setOrientation(float angle, glm::vec3& axis);
-	DCUTIL_API void setOrientation(glm::quat quat);
+	DCUTIL_API void setOrientation(float angle, glm::vec3 axis);
+	DCUTIL_API void setOrientation(const glm::quat& quat);
 	
 	DCUTIL_API glm::vec3 getRight() const;
 	DCUTIL_API glm::vec3 getFront() const;
@@ -31,9 +31,12 @@ namespace dcutil
 	DCUTIL_API void pitchGlobal(float angle);
 	DCUTIL_API void rollGlobal(float angle);
 
+	DCUTIL_API void lookAt(const glm::vec3& directionVector, const glm::vec3& upVector);
+
     private:
-	void rotate(glm::quat quat);
-	void rotateGlobal(glm::quat quat);
+	void rotate(const glm::quat& quat);
+	void rotate(float angle, const glm::vec3& axisVector);
+	void rotateGlobal(const glm::quat& quat);
 
 	glm::quat m_quat;
     };

@@ -1,11 +1,11 @@
 #pragma once
 
-#define DCFX_MAX_VIEWS 16 // 16
+#define DCFX_MAX_VIEWS 255
 #define DCFX_MAX_DRAW_CALLS (1<<12) // 4096
 
 #define DCFX_MAX_COMMAND_BUFFER_SIZE (64<<10) // Frame command buffer 65kb
 #define DCFX_MAX_UNIFORM_BUFFER_SIZE (64<<10) // Frame uniform buffer 65kb
-#define DCFX_MATRIX_CACHE_SIZE (64<<10) // Frame Matrix cache 65kb
+#define DCFX_MATRIX_CACHE_COUNT (1<<12) // 4096 unique matrices
 
 #define DCFX_MAX_IMAGE_UNITS 16 // GL_MAX_IMAGE_UNITS
 #define DCFX_MAX_TEXTURE_SAMPLERS 16 // GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS
@@ -19,5 +19,5 @@
 #define DCFX_MAX_TEXTURES 128
 #define DCFX_MAX_FRAMEBUFFERS 64
 
-#define DCFX_MULTITHREADED 1
-#define DCFX_FRAME_ALLOCATOR_SIZE (32<<18) // Frame allocator 10 mb
+#define DCFX_MULTITHREADED 0
+#define DCFX_FRAME_ALLOCATOR_SIZE (32<<22)

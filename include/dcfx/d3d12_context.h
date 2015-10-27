@@ -1,12 +1,11 @@
 #pragma once
 
 #include "context.h"
-
 #include <d3d12.h>
 #include <dxgi1_4.h>
 #include <d3dcompiler.h>
 
-// TODO: This is for UpdateSubresources
+// NOTE(daniel): This is for UpdateSubresources
 #include <d3dx12.h>
 
 namespace dcfx
@@ -26,7 +25,6 @@ namespace dcfx
 
 	D3D12IndirectCommand m_cmds[DCFX_MAX_DRAW_CALLS];
 	uint16_t m_cmdIndex;
-
     };
     
     struct D3D12Shader

@@ -15,11 +15,10 @@ namespace dcutil
 	HandleAllocator()
 		: m_handleCount(0), m_recCount(0)
 	    {
-		assert(size < UINT16_MAX);
+		assert(size < UINT16_MAX - 1);
 		for (uint16_t i = 0; i < size; ++i)
 		{
 		    m_handles[i] = i;
-		    m_recylced[i] = 0;
 		}
 	    }
 	

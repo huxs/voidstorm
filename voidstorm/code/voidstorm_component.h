@@ -13,7 +13,7 @@ struct Node
 
 struct ComponentMap
 {
-    void add(dcutil::Stack* stack, Entity entity, int compId);
+    void add(dcutil::StackAllocator* stack, Entity entity, int compId);
     void remove(Entity entity);
     int lookup(Entity entity);
     
@@ -22,7 +22,7 @@ struct ComponentMap
 
 struct TransformManager
 {
-    TransformManager(dcutil::Stack* _stack)
+    TransformManager(dcutil::StackAllocator* _stack)
 	    : stack(_stack) {}
     
     struct Instance { int index; };
@@ -54,13 +54,13 @@ struct TransformManager
     void setScale(Instance i, float scale) { data.scale[i.index] = scale;}
     float getScale(Instance i) { return data.scale[i.index]; }
     
-    dcutil::Stack* stack;
+    dcutil::StackAllocator* stack;
     ComponentMap map;
 };
 
 struct PhysicsManager
 {
-    PhysicsManager(dcutil::Stack* _stack)
+    PhysicsManager(dcutil::StackAllocator* _stack)
 	    : stack(_stack) {}
     
     struct Instance { int index; };
@@ -85,13 +85,13 @@ struct PhysicsManager
     void setMass(Instance i, float mass) { data.mass[i.index] = mass; }
     void addForce(Instance i, glm::vec2 force) { data.force[i.index] = force; }
 
-    dcutil::Stack* stack;
+    dcutil::StackAllocator* stack;
     ComponentMap map;
 };
 
 struct CollisionResponderManager
 {
-    CollisionResponderManager(dcutil::Stack* _stack)
+    CollisionResponderManager(dcutil::StackAllocator* _stack)
 	    : stack(_stack) {}
     
     struct Instance { int index; };
@@ -122,7 +122,7 @@ struct CollisionResponderManager
     void destroy(Instance i);
     Instance lookup(Entity e) { return { map.lookup(e) }; };
 
-    dcutil::Stack* stack;
+    dcutil::StackAllocator* stack;
     ComponentMap map;	
 };
 
@@ -134,7 +134,7 @@ struct PolygonShape;
 struct CircleShape;
 struct CollisionManager
 {
-    CollisionManager(dcutil::Stack* _stack)
+    CollisionManager(dcutil::StackAllocator* _stack)
 	    : stack(_stack) {}
 
     struct Instance { int index; };
@@ -190,13 +190,13 @@ struct CollisionManager
     
     void setRadius(Instance i, float radius);
 
-    dcutil::Stack* stack;
+    dcutil::StackAllocator* stack;
     ComponentMap map;
 };
 
 struct SpriteManager
 {
-    SpriteManager(dcutil::Stack* _stack)
+    SpriteManager(dcutil::StackAllocator* _stack)
 	    : stack(_stack) {}
     
     struct Instance { int index; };
@@ -226,21 +226,20 @@ struct SpriteManager
     void setSize(Instance i, glm::vec2 size) { data.size[i.index] = size; }
     void setOrigin(Instance i, glm::vec2 origin) { data.origin[i.index] = origin; }
     
-    dcutil::Stack* stack;
+    dcutil::StackAllocator* stack;
     ComponentMap map;
 };
 
 struct World
 {
-    World(dcutil::Stack* stack)
+    World(dcutil::StackAllocator* stack)
 	    :
 	    transforms(stack),
 	    physics(stack),
 	    collisions(stack),
 	    responders(stack),
 	    sprites(stack)
-	{
-	}
+	{}
 
     void reset();
 

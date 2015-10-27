@@ -1,7 +1,15 @@
-ParticleEngine::ParticleEngine(dcutil::Stack* _stack, dcfx::Context* _renderCtx, SpriteBatch* _sb)
-	:  stack(_stack), renderCtx(_renderCtx), sb(_sb), emittersInPlayCount(0)
+ParticleEngine::ParticleEngine(dcutil::StackAllocator* _stack, dcfx::Context* _renderCtx, SpriteBatch* _sb)
+	:
+	stack(_stack),
+	renderCtx(_renderCtx),
+	sb(_sb),
+	emittersInPlayCount(0)
 {
     srand((unsigned int)time(NULL));
+
+    memoryPools[0] = dcutil::PoolAllocator(_stack->alloc(128  * 10000), 128,  10000);
+    memoryPools[1] = dcutil::PoolAllocator(_stack->alloc(512  * 100),   512,  100);
+    memoryPools[2] = dcutil::PoolAllocator(_stack->alloc(1024 * 100),   1024, 10);
 }
 
 void ParticleEngine::reset()
@@ -27,7 +35,7 @@ void ParticleEngine::reset()
 ParticleHandle ParticleEngine::createHandle(ParticleEffectDescription* desc)
 {
     ParticleHandle handle = { effectHandles.alloc() };
-
+    assert(handle.index < ARRAYSIZE(effects));
     ParticleEffect* effect = &effects[handle.index];  
     effect->desc = desc;
 
@@ -35,11 +43,12 @@ ParticleHandle ParticleEngine::createHandle(ParticleEffectDescription* desc)
     for(int i = 0; i < desc->count; ++i)
     {
 	EmitterHandle emitterHandle = { emitterHandles.alloc() };
-
-	effect->emitters[i] = emitterHandle;
-
+	assert(emitterHandle.index < ARRAYSIZE(emitters));
 	ParticleEmitter* emitter = &emitters[emitterHandle.index];
 	emitter->emitter = emitterDesc;
+	
+	assert(i < ARRAYSIZE(effect->emitters));
+	effect->emitters[i] = emitterHandle;
 
 	static const int NumParticles = 100;
 
@@ -68,7 +77,6 @@ ParticleHandle ParticleEngine::createHandle(ParticleEffectDescription* desc)
     return handle;
 };
 
-
 void ParticleEngine::deleteHandle(ParticleHandle handle)
 {
     ParticleEffect* effect = &effects[handle.index];
@@ -83,6 +91,26 @@ void ParticleEngine::deleteHandle(ParticleHandle handle)
 void ParticleEngine::play(ParticleHandle handle)
 {
     effectsInPlay[handle.index] = &effects[handle.index];
+
+    ParticleEffect* effect = effectsInPlay[handle.index];
+    
+    for(int j = 0; j < effect->desc->count; ++j)
+    {
+	ParticleEmitter* emitter = &emitters[effect->emitters[j].index];
+
+	if(emitter->emitter->spawnTime == 0)
+	{
+	    spawn(emitter);
+	}	
+    }
+
+	/*
+    float dt = 0.016f;
+    for(int i = 0; i < 7500; ++i)
+    {
+	update(dt);
+	swap();
+    }*/
 }
 
 void ParticleEngine::stop(ParticleHandle handle)
@@ -165,6 +193,70 @@ void ParticleEngine::prepass()
     }
 }
 
+void ParticleEngine::spawn(ParticleEmitter* emitter)
+{
+    for(int j = 0; j < emitter->emitter->particlesPerEmit; j++)
+    {
+	Particle p;
+	p.position = emitter->emitter->position;
+		
+	if(emitter->emitter->relative)
+	{
+	    float angle = atan2(p.position.y, p.position.x);
+
+	    glm::vec2 npos;
+	    npos.x = cos(-emitter->rotation + angle);
+	    npos.y = sin(-emitter->rotation + angle);
+
+	    npos *= glm::length(p.position);
+		    
+	    p.position = emitter->position + npos;
+	}
+
+	glm::vec2 f = emitter->emitter->force;
+	float dangle = atan2(f.y, f.x);
+		
+	float angle = glm::radians(emitter->emitter->spread);
+
+	float rangle = (rand() / (float)RAND_MAX) * angle;
+
+	if(emitter->emitter->relative)
+	{
+	    f.x = cos(rangle + dangle -emitter->rotation);
+	    f.y = sin(rangle + dangle -emitter->rotation);
+	}
+	else
+	{
+	    f.x = cos(rangle + dangle);
+	    f.y = sin(rangle + dangle);
+	}
+	
+
+	f *= glm::length(emitter->emitter->force);
+	    
+	p.acceleration = f;
+	p.velocity = glm::vec2(0,0);
+	p.color.r = randBetween(emitter->emitter->colorMin.r, emitter->emitter->colorMax.r);
+	p.color.g = randBetween(emitter->emitter->colorMin.g, emitter->emitter->colorMax.g);
+	p.color.b = randBetween(emitter->emitter->colorMin.b, emitter->emitter->colorMax.b);
+	p.color.a = randBetween(emitter->emitter->colorMin.a, emitter->emitter->colorMax.a);
+
+	float size = randBetween(emitter->emitter->sizeMin, emitter->emitter->sizeMax);
+	p.size = glm::vec2(size,size);
+
+	p.rotation = glm::radians(randBetween(emitter->emitter->rotationMin, emitter->emitter->rotationMax));
+		
+	p.lifetime = randBetween(emitter->emitter->lifetimeMin, emitter->emitter->lifetimeMax);
+	p.time = 0;
+	p.texture = emitter->emitter->texture;
+
+	assert(emitter->active->used < emitter->active->size);
+	    
+	emitter->active->particles[emitter->active->used] = p;
+	emitter->active->used++;
+    }
+}
+
 void ParticleEngine::emit(float dt)
 {
     TIME_BLOCK(Particle_Emit);
@@ -183,67 +275,10 @@ void ParticleEngine::emit(float dt)
 	    emitter->state = EmitterState::ENDING;
 	    continue;
 	}
-	
-	if(emitter->time >= emitter->emitter->spawnTime)
+
+	if(emitter->emitter->spawnTime != 0 && emitter->time >= emitter->emitter->spawnTime)
 	{
-	    for(int j = 0; j < emitter->emitter->particlesPerEmit; j++)
-	    {
-		Particle p;
-		p.position = emitter->emitter->position;
-		
-		if(emitter->emitter->relative)
-		{
-		    float angle = atan2(p.position.y, p.position.x);
-
-		    glm::vec2 npos;
-		    npos.x = cos(-emitter->rotation + angle);
-		    npos.y = sin(-emitter->rotation + angle);
-
-		    npos *= glm::length(p.position);
-		    
-		    p.position = emitter->position + npos;
-
-		}
-
-		glm::vec2 f = emitter->emitter->force;
-		float dangle = atan2(f.y, f.x);
-		
-		float angle = glm::radians(emitter->emitter->spread);
-
-		float rangle = (rand() / (float)RAND_MAX) * angle;
-
-		if(emitter->emitter->relative)
-		{
-		    f.x = cos(rangle + dangle -emitter->rotation);
-		    f.y = sin(rangle + dangle -emitter->rotation);
-		}
-		else
-		{
-		    f.x = cos(rangle + dangle);
-		    f.y = sin(rangle + dangle);
-		}
-	
-
-		f *= glm::length(emitter->emitter->force);
-	    
-		p.acceleration = f;
-		p.velocity = glm::vec2(0,0);
-		p.color = emitter->emitter->startColor;
-
-		float size = randBetween(emitter->emitter->sizeMin, emitter->emitter->sizeMax);
-		p.size = glm::vec2(size,size);
-
-		p.rotation = glm::radians(randBetween(emitter->emitter->rotationMin, emitter->emitter->rotationMax));
-		
-		p.lifetime = randBetween(emitter->emitter->lifetimeMin, emitter->emitter->lifetimeMax);
-		p.time = 0;
-		p.texture = emitter->emitter->texture;
-
-		assert(emitter->active->used < emitter->active->size);
-	    
-		emitter->active->particles[emitter->active->used] = p;
-		emitter->active->used++;
-	    }
+	    spawn(emitter);
 	    
 	    emitter->time = 0;
 	}
@@ -277,7 +312,7 @@ void ParticleEngine::simulate(float dt)
 
 	    p->time += dt;
 
-	    if(p->time <= p->lifetime)
+	    if(p->lifetime == 0 || p->time <= p->lifetime)
 	    {
 		emitter->second->particles[emitter->second->used++] = *p;
 	    }
@@ -296,8 +331,11 @@ void ParticleEngine::render(int view)
 	for (int j = 0; j < emitter->second->used; ++j)
 	{
 	    Particle* p = &emitter->second->particles[j];
+
+	    glm::vec4 c = p->color;
 	    
-	    glm::vec4 c = p->color + (emitter->emitter->endColor - p->color) * (p->time / p->lifetime);
+	    if(p->lifetime != 0)
+		c += (emitter->emitter->endColor - p->color) * (p->time / p->lifetime);
 
 	    glm::vec2 projectedXY = (1.0f / emitter->depth) * p->position;
 	    float scale = 1.0f / emitter->depth;
@@ -316,7 +354,17 @@ void ParticleEngine::render(int view)
 	}
 
 	sb->draw(view);
-	
+    }
+
+    swap();
+}
+
+void ParticleEngine::swap()
+{
+    for(int i = 0; i < emittersInPlayCount; ++i)
+    {
+	ParticleEmitter* emitter = emittersInPlay[i];
+
 	ParticleBuffer* temp = emitter->active;
 
 	emitter->active = emitter->second;

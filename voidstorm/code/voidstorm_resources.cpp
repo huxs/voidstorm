@@ -96,7 +96,7 @@ void TextureManager::clean()
     }
 }
 
-static void storeEffectParams(ParticleEffectDescription* effect, lua_State* luaState, dcutil::Stack* arena)
+static void storeEffectParams(ParticleEffectDescription* effect, lua_State* luaState, dcutil::StackAllocator* arena)
 {
     lua_getfield(luaState, 1, "emitters");
 
@@ -158,6 +158,14 @@ static void storeEffectParams(ParticleEffectDescription* effect, lua_State* luaS
 	lua_getfield(luaState, -1, "rotationMax");
         emitter->rotationMax = (float)lua_tonumber(luaState, -1);
 	//PRINT("RotationMax %f\n", emitter->rotationMax);
+	lua_pop(luaState, 1);
+
+	lua_getfield(luaState, -1, "colorMin");
+	emitter->colorMin = *(glm::vec4*)lua_touserdata(luaState, -1);
+	lua_pop(luaState, 1);
+
+	lua_getfield(luaState, -1, "colorMax");
+	emitter->colorMax = *(glm::vec4*)lua_touserdata(luaState, -1);
 	lua_pop(luaState, 1);
 	
 	lua_getfield(luaState, -1, "startColor");

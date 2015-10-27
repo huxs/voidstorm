@@ -1,11 +1,13 @@
 #pragma once
 
+// Effect handle?
 struct ParticleHandle { uint16_t index; };
 
+// Effect system?
 class ParticleEngine
 {
 public:
-    ParticleEngine(dcutil::Stack* stack, dcfx::Context* renderCtx, SpriteBatch* sb);
+    ParticleEngine(dcutil::StackAllocator* stack, dcfx::Context* renderCtx, SpriteBatch* sb);
 
     void reset();
     
@@ -21,12 +23,12 @@ public:
     
     void update(float dt);
     void render(int view);
-    
+
 private:
 
     static const int MaxEffects = 1000;
-    static const int MaxEmittersPerEffect = 5;
-    static const int MaxEmitters = MaxEffects * MaxEmittersPerEffect;
+    static const int MaxEmittersPerEffect = 128;
+    static const int MaxEmitters = 5000;
 
     struct Particle
     {
@@ -40,6 +42,13 @@ private:
 	float lifetime;
 	Texture* texture;
     };
+
+    enum class ParticleBufferSizeTier
+    {
+	LOW,
+	MEDIUM,
+	HIGH
+    };
     
     struct ParticleBuffer
     {
@@ -52,9 +61,9 @@ private:
 
     enum class EmitterState
     {
-	EMITTING, // NOTE: Emitter is running.
-	ENDING, // NOTE: Emittter has stoped, but simulate remaining particles.
-	FINNISHED // NOTE: All particles in the emitter has passed it's lifetime.
+	EMITTING, // Emitter is running
+	ENDING, // Emittter has stoped, but simulate remaining particles
+	FINNISHED // All particles in the emitter has passed it's lifetime
     };
     
     struct ParticleEmitter
@@ -78,18 +87,19 @@ private:
 	ParticleEffect() : rotation(0.0f), depth(1.0f) {}
     
 	ParticleEffectDescription* desc;
-	EmitterHandle emitters[ParticleEngine::MaxEmittersPerEffect];
-
 	glm::vec2 position;
 	float rotation;
 	float depth;
+	EmitterHandle emitters[ParticleEngine::MaxEmittersPerEffect];
     };
 
     void prepass();
+    void spawn(ParticleEmitter* emitter);
     void emit(float dt);
     void simulate(float dt);
+    void swap();
 
-    dcutil::Stack* stack;
+    dcutil::StackAllocator* stack;
     dcfx::Context* renderCtx;
     SpriteBatch* sb;
 
@@ -100,6 +110,7 @@ private:
     dcutil::HandleAllocator<MaxEmitters> emitterHandles;
     ParticleEmitter emitters[MaxEmitters];
     ParticleEmitter* emittersInPlay[MaxEmitters];
+    int emittersInPlayCount;
 
-    int emittersInPlayCount; 
+    dcutil::PoolAllocator memoryPools[3];
 };

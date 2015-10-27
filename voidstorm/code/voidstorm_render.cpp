@@ -1,10 +1,10 @@
 #include <SDL2/SDL_syswm.h>
 
-const float Renderer::GaussBlurSigma = 1.6f;
+const float Renderer::GaussBlurSigma = 1.0f;
 const float Renderer::GaussBlurTapSize = 1.0f;
-const float Renderer::Exposure = 5.0f;
+const float Renderer::Exposure = 0.0f;
 
-// TODO: Not a big fan of this constant.
+// TODO (daniel): Not a big fan of this constant
 const float Renderer::CameraZoom = 1280.0f;
 
 struct Vertex1P1UV
@@ -13,28 +13,13 @@ struct Vertex1P1UV
     glm::vec2 uv;
 };
 
-Renderer::Renderer(HeapAllocator* heap, dcutil::Stack* perm, dcutil::Stack* world)
+Renderer::Renderer(HeapAllocator* heap, dcutil::StackAllocator* perm, dcutil::StackAllocator* world)
 {
     resolution.x = 1280;
     resolution.y = 720;
     isFullscreen = false;
-    
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 
-    int glContextFlags = 0;
-#if defined (_DEBUG)
-    glContextFlags = SDL_GL_CONTEXT_DEBUG_FLAG;
-#endif
-    
-    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 16);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, glContextFlags);
-    SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1);
-    SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 8);
-
-    Uint32 createWindowFlags = SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE;
+    Uint32 createWindowFlags = SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE;
     window = SDL_CreateWindow("Voidstorm",
 			      SDL_WINDOWPOS_UNDEFINED,
 			      SDL_WINDOWPOS_UNDEFINED,
@@ -301,7 +286,7 @@ void Renderer::render(World* world)
     renderCtx->setProgram(exposureProgram);
     renderCtx->submit(RENDERPASS_OUTPUT);
 #endif
-    
+
     // NOTE: Render debug information such as lines, graphs etc.
     linerenderer->dispatch(RENDERPASS_DEBUG);
 }

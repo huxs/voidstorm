@@ -30,6 +30,7 @@ namespace dcfx
 	uint8_t m_numAttribs;
 	uint8_t m_attributes[DCFX_MAX_ATTRIBUTES];
 	uint8_t m_offsets[DCFX_MAX_ATTRIBUTES];
+	uint8_t m_sizes[DCFX_MAX_ATTRIBUTES];
 	uint32_t m_stride;
 	uint32_t m_hash;
     };

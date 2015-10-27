@@ -1,8 +1,10 @@
 #pragma once
 
-#include "stack.h"
-#include "pool.h"
 #include <stdint.h>
+#include <assert.h>
+#include <stdint.h>
+
+// TODO (daniel): Aligned allocations
 
 namespace dcutil
 {
@@ -27,41 +29,92 @@ namespace dcutil
 
     struct StackAllocator : public AllocatorI
     {
-	StackAllocator(Stack* stack)
+	StackAllocator() {}
+	StackAllocator(void* base, size_t size)
+		: m_size(size)
 	    {
-		m_stack = stack;
+	        m_base = m_ptr = base;
 	    }
 				
 	void* alloc(size_t size)
 	    {
-		return m_stack->alloc(size);
+		assert((uint8_t*)m_ptr + size < ((uint8_t*)m_base + m_size) && "Stack allocator overflow");
+	
+		void* ptr = m_ptr;
+		m_ptr = (uint8_t*)m_ptr + size;
+
+		return ptr;
 	    }
 
-	void free(void* mem)
+	void free(void* mem) {}
+
+	void reset()
 	    {
+		m_ptr = m_base;
+	    }
 
-	    }		
+        size_t getAllocatedSize() const
+	    {
+		return ((size_t)m_ptr - (size_t)m_base);
+	    }
 
-	Stack* m_stack;
+	void* m_base;
+	void* m_ptr;
+	size_t m_size;
     };
 
+    struct PoolElement
+    {
+	PoolElement* m_next;
+    };
+    
     struct PoolAllocator : public AllocatorI
     {
-	PoolAllocator(Pool* pool)
+	PoolAllocator() {}
+	PoolAllocator(void* base, size_t elementSize, size_t numElements)
 	    {
-		m_pool = pool;
+		m_start = (PoolElement*)base;
+		
+		union 
+		{
+		    void* as_void;
+		    char* as_char;
+		    PoolElement* as_self;
+		};
+
+		as_void = m_start;
+		m_next = as_self;
+
+		PoolElement* runner = m_next;
+		for(size_t i = 0; i < numElements; ++i)
+		{	
+		    runner->m_next = as_self;
+		    runner = as_self;
+		    as_char += elementSize;
+		}
+
+		runner->m_next = nullptr;
 	    }
 
 	void* alloc(size_t size)
 	    {
-		return m_pool->alloc();
+		assert(m_next != nullptr && "Out of elements!");
+		
+		PoolElement* head = m_next;
+		m_next = head->m_next;
+		return head;
 	    }
 
 	void free(void* mem)
 	    {
-		m_pool->free(mem);
+		if (mem == nullptr) return;
+		
+		PoolElement* head = (PoolElement*)mem;
+		head->m_next = m_next;
+		m_next = head;
 	    }
-	
-	Pool* m_pool;
+
+	PoolElement* m_start;
+	PoolElement* m_next;
     };
 }

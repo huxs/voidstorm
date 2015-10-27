@@ -1,8 +1,3 @@
-
-
--- Rotation speed[min,max]
--- Color[min,max]
-
 ParticleEmitter = class(nil)
 
 function ParticleEmitter:new(id)
@@ -18,10 +13,11 @@ function ParticleEmitter:new(id)
    self.rotationMin = 0.0
    self.rotationMax = 360.0
 
-   -- Not sure if this is needed.
    self.colorMin = color.new(1,1,1,1)
    self.colorMax = color.new(1,1,1,1)
    
+   -- Depth Min/Max
+
    self.sizeMin = 0.5
    self.sizeMax = 1.0
    

@@ -14,6 +14,7 @@
 #include <dcutil/allocator.h>
 #include <dcutil/semaphore.h>
 
+#define GLM_SWIZZLE
 #include <glm/glm.hpp>
 #include <thread>
 #include <atomic>
@@ -31,7 +32,7 @@ namespace dcfx
 	static void static_deallocate(void* _ptr, size_t);
     };
 
-    // TODO: Begin/End profile.
+    // TODO (daniel): Begin/End profile
     struct CallbackI
     {
 	virtual void profile(double ms) = 0;
@@ -87,6 +88,9 @@ namespace dcfx
     struct TextureHandle { uint16_t index; };
     struct FramebufferHandle { uint16_t index; };
 
+    template<class T>
+    static const T Invalid() { return { InvalidHandle }; }
+
     class MatrixCache
     {
     public:
@@ -100,24 +104,25 @@ namespace dcfx
 	const glm::mat4& get(uint32_t index) const;
 	void reset();
     private:
-	glm::mat4 m_matrices[DCFX_MATRIX_CACHE_SIZE];
+	glm::mat4 m_matrices[DCFX_MATRIX_CACHE_COUNT];
 	uint32_t m_count;
     };
 
-    enum class Access
-    {
-	READ,
-	WRITE,
-	READWRITE
-    };
-
+    // Struct describing how to bind an image of a texture
     struct ImageBind
     {
+	enum class Access
+	{
+	    READ,
+	    WRITE,
+	    READWRITE
+	};
+	
 	ImageBind()
 		:
 		m_handle({ InvalidHandle }),
 		m_access(Access::READWRITE),
-		m_layered(true),
+		m_layered(false),
 		m_layer(0),
 		m_level(0)
 	    {}
@@ -125,17 +130,21 @@ namespace dcfx
 	TextureHandle m_handle;
 	Access m_access;
 	bool m_layered;
-	int m_layer;
-	int m_level;
+	uint32_t m_layer;
+	uint32_t m_level;
     };
-    
+
+/*
+  Sortkey layout:
+  Item Type (4bit) View (8bit) ProgramID (16bit) Unused (36bit)
+*/
 #define SORTKEY_ITEM_MASK UINT64_C(0xF000000000000000)
 #define SORTKEY_ITEM_SHIFT 60
-#define SORTKEY_VIEW_MASK UINT64_C(0x0F00000000000000)		
-#define SORTKEY_VIEW_SHIFT 56
-#define SORTKEY_PROGRAM_MASK UINT64_C(0x00FFFF0000000000)
-#define SORTKEY_PROGRAM_SHIFT 40
-
+#define SORTKEY_VIEW_MASK UINT64_C(0x0FF0000000000000)		
+#define SORTKEY_VIEW_SHIFT 52
+#define SORTKEY_PROGRAM_MASK UINT64_C(0x000FFFF000000000)
+#define SORTKEY_PROGRAM_SHIFT 36
+    
     struct ComputeCall
     {
 	ComputeCall()
@@ -257,7 +266,7 @@ namespace dcfx
 	void setViewport(uint8_t index, const glm::ivec4& viewport); 
 	void setClearColor(uint8_t index, const glm::vec4& clearColor);
 	void setTexture(UniformHandle sampler, TextureHandle texture, uint32_t state);
-	void setImage(UniformHandle sampler, TextureHandle texture, Access access, uint8_t mip, bool layered, uint8_t layer);
+	void setImage(UniformHandle sampler, TextureHandle texture, ImageBind::Access access, uint8_t mip, bool layered, uint8_t layer);
 	void setBuffer(uint16_t binding, BufferHandle buffer);
 		
 	void free(UniformHandle handle);
@@ -270,7 +279,7 @@ namespace dcfx
 
 	void clearFreeHandles();
 
-	dcutil::Stack m_allocator;
+	dcutil::StackAllocator m_allocator;
 
 	CommandBuffer m_commands;
 	UniformBuffer m_uniforms;
@@ -321,11 +330,13 @@ namespace dcfx
 	COMPUTE
     };
 
-    static const size_t s_uniformTypeSizes[] = { 4, 16, 4 };
+    static const size_t s_uniformTypeSizes[] = { 4, 4, 12, 16, 4 };
 
     enum class UniformType
     {
 	FLOAT,
+	INT,
+	VEC3,
 	VEC4,
 	SAMPLER
     };
@@ -337,14 +348,15 @@ namespace dcfx
 		  m_frag({ InvalidHandle }),
 		  m_compute({ InvalidHandle })
 	    {}
+	
 	ShaderHandle m_vert;
 	ShaderHandle m_frag;
 	ShaderHandle m_compute;
     };
 
-    // TODO: Add WorldViewProjection predefined.
+    // TODO (daniel): Add WorldViewProjection predefined.
     static const char* s_predfinedUniformNames[] =
-    { "g_view", "g_invView", "g_proj", "g_invProj", "g_transform" };
+    { "g_View", "g_InvView", "g_Proj", "g_InvProj", "g_Transform" };
 
     enum class PredefinedUniformType
     {
@@ -383,11 +395,11 @@ namespace dcfx
 	virtual void deleteProgram(ProgramHandle handle) = 0;
 	virtual void createUniform(UniformHandle handle, const char* name, UniformType type, uint8_t num) = 0;
 	virtual void deleteUniform(UniformHandle handle) = 0;
-	virtual void createTexture(TextureHandle handle, uint32_t width, uint32_t height, uint32_t depth, TextureFormat format) = 0;
+	virtual void createTexture(TextureHandle handle, uint32_t width, uint32_t height, uint32_t depth, TextureFormat format, uint32_t count) = 0;
 	virtual void createTexture(TextureHandle handle, void* mem, size_t size, ImageInfo& info) = 0;
 	virtual void deleteTexture(TextureHandle handle) = 0;
 	virtual void updateTexture(TextureHandle handle, void* mem) = 0;
-	virtual void createFramebuffer(FramebufferHandle handle, TextureHandle* texHandles, uint32_t num) = 0;
+	virtual void createFramebuffer(FramebufferHandle handle, TextureHandle* texHandles, uint32_t num, uint32_t index) = 0;
 	virtual void deleteFramebuffer(FramebufferHandle handle) = 0;
     };
 
@@ -403,10 +415,10 @@ namespace dcfx
 
 	DCFX_API void* frameAlloc(size_t size);
 	
-	// call to advance a frame.
-	DCFX_API void frame();
+	// Call to advance a frame
+	DCFX_API uint64_t frame();
 			
-	// resource creation.
+	// Resource creation
 	DCFX_API BufferHandle createVertexBuffer(void* mem, size_t size, const VertexDecl& decl);
 	DCFX_API BufferHandle createBuffer(void* mem, size_t size, BufferType type);
 	DCFX_API void deleteBuffer(BufferHandle handle);
@@ -419,26 +431,26 @@ namespace dcfx
 	DCFX_API UniformHandle createUniform(const char* name, UniformType type, uint8_t num);
 	DCFX_API void deleteUniform(UniformHandle handle);
 
-	// TODO: Send a initial state with the texture also add additional data such as anistrophic level etc.
+	// TODO (daniel): Send a initial state with the texture also add additional data such as anistrophic level etc
 	DCFX_API TextureHandle createTexture(uint32_t width, uint32_t height, uint32_t depth, TextureFormat format);
-	DCFX_API TextureHandle createTexture(uint32_t width, uint32_t height, TextureFormat format);
+	DCFX_API TextureHandle createTexture(uint32_t width, uint32_t height, TextureFormat format, uint32_t count = 1);
 	DCFX_API TextureHandle createTexture(void* mem, size_t size, ImageInfo& info);
 	
 	DCFX_API void deleteTexture(TextureHandle handle);
 	DCFX_API void updateTexture(TextureHandle handle, void* mem);
-	DCFX_API FramebufferHandle createFramebuffer(TextureHandle* handles, uint32_t num);
+	DCFX_API FramebufferHandle createFramebuffer(TextureHandle* handles, uint32_t num, uint32_t index = 0);
 	DCFX_API void deleteFramebuffer(FramebufferHandle handle);
 			
 	DCFX_API void setUniform(UniformHandle handle, const void* mem, size_t size);
 	DCFX_API void setTexture(UniformHandle sampler, TextureHandle texture, uint32_t state = 0);
-	DCFX_API void setImage(UniformHandle sampler, TextureHandle texture, Access access = Access::READWRITE, uint8_t mip = 0, bool layered = true, uint8_t layer = 0);
+	DCFX_API void setImage(UniformHandle sampler, TextureHandle texture, ImageBind::Access access = ImageBind::Access::READWRITE, uint8_t mip = 0, bool layered = false, uint8_t layer = 0);
 	DCFX_API void setBuffer(uint16_t binding, BufferHandle buffer);
 	
 	DCFX_API void setFramebuffer(uint8_t index, FramebufferHandle framebuffer);
 	DCFX_API void setViewport(uint8_t index, const glm::ivec4& viewport);
 	DCFX_API void setClearColor(uint8_t index, const glm::vec4& clearColor);
 		
-	// primitive submission.
+	// Primitive submission
 	DCFX_API void setVertexBuffer(BufferHandle handle, uint32_t baseVertex = 0, uint32_t count = 0);
 	DCFX_API void setIndexBuffer(BufferHandle handle, uint32_t indexOffset, uint32_t count);
 	DCFX_API void setInstanceBuffer(BufferHandle handle, uint32_t numInstances, uint16_t stride, uint32_t offset = 0);
@@ -455,14 +467,14 @@ namespace dcfx
     private:
 	void freeHandles();
 	
-	// swaps the submit datastructure with the render one.
+	// Swaps the submit datastructure with the render one
 	void swap();
 
 	void execCommands(CommandBuffer* buffer);
 
 	static int32_t renderThread(Context* ctx);
 
-	// called by the render thread.
+	// Called by the render thread
 	bool renderFrame();
 
 	VertexDeclHandle findVertexDecl(const VertexDecl& decl);
@@ -481,9 +493,9 @@ namespace dcfx
 	Frame m_frames[2];
 	Frame* m_render;
 	Frame* m_submit;
-
 	void* m_renderTempMem;
-	void* m_submitTempMem;	
+	void* m_submitTempMem;
+	uint64_t m_frameCount;
 
 	dcutil::HandleAllocator<DCFX_MAX_UNIFORMS> m_uniformHandles;
 	dcutil::HandleAllocator<DCFX_MAX_VERTEX_DECLS> m_vertexDeclHandles;	

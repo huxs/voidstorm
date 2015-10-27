@@ -1,4 +1,4 @@
-void ComponentMap::add(dcutil::Stack* stack, Entity entity, int compId)
+void ComponentMap::add(dcutil::StackAllocator* stack, Entity entity, int compId)
 {
     int hash = dcutil::sdbm32((char*)&entity.id, sizeof(entity.id));
     int slot = hash & (ARRAYSIZE(map)-1);

@@ -18,7 +18,7 @@ struct DbvtNode
 	    child2(nullptr)
 	{}
     
-    bool isLeaf() { return child1 == nullptr; }
+	bool isLeaf() { return child1 == nullptr; } const
 
     Entity entity;
     AABB aabb;
@@ -27,7 +27,7 @@ struct DbvtNode
     DbvtNode* child2;
 };
 
-// dynamic bounding volume tree
+// Dynamic bounding volume tree
 class Dbvt
 {
 public:
@@ -48,13 +48,13 @@ private:
     void removeNode(DbvtNode* nodeToRemove);
     
     DbvtNode* root;    
-    dcutil::Pool allocator;
+    dcutil::PoolAllocator allocator;
 };
 
 class PhysicsWorld
 {
 public:
-    PhysicsWorld(dcutil::Stack* stack, LineRenderer* linerenderer);
+    PhysicsWorld(dcutil::StackAllocator* stack, LineRenderer* linerenderer);
 
     Dbvt* getTree() { return &tree; }
     

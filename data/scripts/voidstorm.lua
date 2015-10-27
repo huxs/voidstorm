@@ -1,8 +1,6 @@
 
 function GameInitialize()
 
-   print("GameInitialized")
-
    -- Maps Entities to Sprites.
    sprites = {}
 
@@ -40,9 +38,8 @@ function GameInitialize()
    -- Initialize all the entities in the map.
    Map.start();
 
-   voidstorm.setPostProcessParams(1.9, 1.1, 1.0)
-
-
+   -- Non HDR values was 1.9, 1.0, 1.0
+   voidstorm.setPostProcessParams(1.9, 1.0, 0.0)
 
 end
 

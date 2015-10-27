@@ -1,13 +1,13 @@
 struct LuaAllocatorUserData
 {
-    dcutil::Pool* pool;
+    dcutil::PoolAllocator* pool;
     mspace ms;
 };
 
 void* LuaAllocatorCallback(void* ud, void* ptr, size_t osize, size_t nsize)
 {
     LuaAllocatorUserData* data = (LuaAllocatorUserData*)ud;
-    dcutil::Pool* pool = data->pool;
+    dcutil::PoolAllocator* pool = data->pool;
     
     void* pRet = NULL;
     if(nsize == 0)
@@ -28,7 +28,7 @@ void* LuaAllocatorCallback(void* ud, void* ptr, size_t osize, size_t nsize)
     {
 	if (nsize < VOIDSTORM_SCRIPT_ELEMENT_SIZE)
 	{
-	    pRet = pool->alloc();
+		pRet = pool->alloc(0);
 	    if(ptr)
 	    {
 		if(osize > 0 && osize < VOIDSTORM_SCRIPT_ELEMENT_SIZE)

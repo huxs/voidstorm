@@ -2,6 +2,7 @@
 
 #include "dcutil_helper.h"
 #include <glm/glm.hpp>
+#include <cstdlib>
 
 namespace dcutil
 {
@@ -15,10 +16,11 @@ namespace dcutil
 	float getLengthZ() const;
 
 	glm::vec3 getCenter() const;
-        bool testPoint(glm::vec3 point) const;
+        bool testPoint(const glm::vec3& point) const;
 
+	void expand(const AABB& aabb);
 	void expand(const glm::vec3& point);
-
+       
 	union
 	{
 	    struct
@@ -30,6 +32,14 @@ namespace dcutil
 	};
     };
 
+    inline AABB::AABB()
+	    : m_minX(FLT_MAX), m_maxX(-FLT_MAX), m_minY(FLT_MAX), m_maxY(-FLT_MAX), m_minZ(FLT_MAX), m_maxZ(-FLT_MAX)
+    {}
+
+    inline AABB::AABB(float minX, float maxX, float minY, float maxY, float minZ, float maxZ)
+	    : m_minX(minX), m_maxX(maxX), m_minY(minY), m_maxY(maxY), m_minZ(minZ), m_maxZ(maxZ)
+    {}
+    
     inline float AABB::getLengthX() const
     {
 	return glm::abs(m_maxX - m_minX); 
@@ -45,20 +55,12 @@ namespace dcutil
 	return glm::abs(m_maxZ - m_minZ); 
     }
 
-/*
-//TODO: Should we use a rectangle struct?
-inline Rectangle AABB::getXZRect() const
-{
-return Rectangle(m_minX, m_minZ, getLengthX(), getLengthZ());
-}
-*/
-
     inline glm::vec3 AABB::getCenter() const
     {
 	return glm::vec3(m_minX + getLengthX() / 2, m_minY + getLengthY() / 2, m_minZ + getLengthZ() / 2);
     }
 
-    inline bool AABB::testPoint(glm::vec3 point) const
+    inline bool AABB::testPoint(const glm::vec3& point) const
     {
 	if(point.x > m_minX && point.x < m_maxX)
 	{

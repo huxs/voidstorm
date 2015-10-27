@@ -2,7 +2,6 @@
 
 #include "dcutil_helper.h"
 #include <stdint.h>
-#include <cstddef>
 
 namespace dcutil
 {
@@ -11,6 +10,7 @@ namespace dcutil
     public:
 	MemoryReader(void* mem, size_t size);
 	size_t read(void* data, size_t size);
+	size_t seek(size_t size);
     private:
 	const char* m_data;
 	size_t m_pos;

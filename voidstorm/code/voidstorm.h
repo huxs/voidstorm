@@ -2,6 +2,7 @@
 
 /*
   TODO (daniel):
+  - x86 libs for utility/render.
   - opengl_glx for linux compabillity.
   - font-writes from lua is currently only affected by the viewport and not the camera
   and they are not batched properly.
@@ -45,8 +46,7 @@
 
 #include <dcutil/handleallocator.h>
 #include <dcutil/hash.h>
-#include <dcutil/stack.h>
-#include <dcutil/pool.h>
+#include <dcutil/allocator.h>
 
 #include <dcfx/context.h>
 
