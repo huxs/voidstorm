@@ -132,6 +132,7 @@ private:
 
 struct ParticleEmitterDescription
 {
+    int bufferSizeTier;
     int particlesPerEmit;
     float spawnTime;
     float lifetime;
@@ -141,6 +142,8 @@ struct ParticleEmitterDescription
     float sizeMax;
     float rotationMin;
     float rotationMax;
+    float depthMin;
+    float depthMax;
     glm::vec4 colorMin;
     glm::vec4 colorMax;
     glm::vec4 startColor;
@@ -157,7 +160,7 @@ struct ParticleEffectDescription
 {
     ParticleEffectDescription() : emitter(nullptr), count(0) {}
     
-    uint8_t count;
+    uint32_t count;
     ParticleEmitterDescription* emitter;
 };
 

@@ -80,13 +80,15 @@ static SpriteFont loadFont(dcfx::Context* renderCtx, const char* filepath)
     return font;
 };
 
+#define SAMPLER_STATE (DCFX_SAMPLER_MAG_LINEAR | DCFX_SAMPLER_MIN_LINEAR | DCFX_EDGE_FUNC(DCFX_SAMPLER_EDGE_CLAMP, DCFX_SAMPLER_EDGE_CLAMP, DCFX_SAMPLER_EDGE_CLAMP))  
+
 SpriteBatch::SpriteBatch(dcfx::Context* _renderCtx)
 	:
 	renderCtx(_renderCtx),
-	sortMode(SpriteSortMode::TEXTURE),
 	blendState(DCFX_DEFAULT_STATE),
+	samplerState(SAMPLER_STATE),
 	customProgram({dcfx::InvalidHandle}),
-	VBOPosition(0),
+	spriteCount(0),
 	spriteQueueCount(0)
 {
 
@@ -115,15 +117,15 @@ SpriteBatch::SpriteBatch(dcfx::Context* _renderCtx)
     
     vertexBuffer = renderCtx->createVertexBuffer(
 	nullptr,
-	SpriteBatch::BatchSize * SpriteBatch::VerticesPerSprite * sizeof(SpriteVertex),
+	SpriteBatch::MaxSprites * SpriteBatch::VerticesPerSprite * sizeof(SpriteVertex),
 	vertexDecl);
 
     uint32_t* indices = (uint32_t*)renderCtx->frameAlloc(
-	SpriteBatch::BatchSize * SpriteBatch::IndicesPerSprite * sizeof(uint32_t));
+	SpriteBatch::MaxSprites * SpriteBatch::IndicesPerSprite * sizeof(uint32_t));
 
     // NOTE: Counter-clockwise culling.
     for(uint32_t vertex = 0, index = 0;
-	vertex < SpriteBatch::BatchSize * SpriteBatch::VerticesPerSprite;
+	vertex < SpriteBatch::MaxSprites * SpriteBatch::VerticesPerSprite;
 	vertex += SpriteBatch::VerticesPerSprite, index += SpriteBatch::IndicesPerSprite)
     {
 	indices[index] = vertex + 3;
@@ -136,7 +138,7 @@ SpriteBatch::SpriteBatch(dcfx::Context* _renderCtx)
 	
     indexBuffer = renderCtx->createBuffer(
 	&indices[0],
-	SpriteBatch::BatchSize * SpriteBatch::IndicesPerSprite * sizeof(uint32_t),
+	SpriteBatch::MaxSprites * SpriteBatch::IndicesPerSprite * sizeof(uint32_t),
 	dcfx::BufferType::INDEX);
 }
 
@@ -174,13 +176,12 @@ void SpriteBatch::write(const char* text, const glm::vec2& position)
 	    int width = glyph->right - glyph->left;
 	    int height = glyph->bottom - glyph->top;
 
-	    // NOTE: Mabey we want to do this in pixels?
 	    glm::vec4 subrect = glm::vec4(
-		(float)glyph->left/defaultFont.desc.width,
-		(float)glyph->top/defaultFont.desc.height,
-		(float)width/defaultFont.desc.width,
-		(float)height/defaultFont.desc.height);
-
+		(float)glyph->left / defaultFont.desc.width,
+		(float)glyph->top / defaultFont.desc.height,
+		(float)width / defaultFont.desc.width,
+		(float)height / defaultFont.desc.height
+		);
 
 	    glm::vec2 offset = glm::vec2((x * -1) / width, (y + glyph->offsetY * -1)/height);
 
@@ -199,29 +200,32 @@ void SpriteBatch::write(const char* text, const glm::vec2& position)
     }
 }
 
-void SpriteBatch::draw(int view)
-{
-    setRenderStates(view);
-    flushBatch(view);
-}
-
 void SpriteBatch::submit()
 {
     if(spriteQueueCount >= SpriteBatch::QueueSize - 1)
+    {
+	//printf("SpriteQueue full %d\n", SpriteBatch::QueueSize);	
 	return;
+    }
 	
     spriteQueueCount++;
 }
 
 void SpriteBatch::reset()
 {
-    VBOPosition = 0;
+    spriteCount = 0;
     spriteQueueCount = 0;
+}
+
+void SpriteBatch::flush(int view)
+{
+    setRenderStates(view);
+    flushBatch(view);
 }
 
 void SpriteBatch::setRenderStates(int view)
 {
-    // Set program.
+    // Set program
     if(customProgram.index != dcfx::InvalidHandle) {
 	selectedProgram = customProgram;
     } 
@@ -234,6 +238,7 @@ void SpriteBatch::setRenderStates(int view)
     renderCtx->setPrimitiveMode(DCFX_STATE_PT_TRIANGLES);
 }
 
+// Converts the sprites in the queue to batches
 void SpriteBatch::flushBatch(int view)
 {
     if(spriteQueueCount == 0) return;
@@ -263,14 +268,14 @@ void SpriteBatch::flushBatch(int view)
 	}
     }
 
-    // Render final batch.
+    // Render final batch
     renderBatch(
 	view,
 	batchTexture,
 	&spriteSortList[batchStart],
 	spriteQueueCount - batchStart);
 
-    // Reset the queue.
+    // Reset the queue
     spriteQueueCount = 0;
 }
 
@@ -280,23 +285,23 @@ void SpriteBatch::renderBatch(
     SpriteInfo** sprites,
     int count)
 {
-
-#define SAMPLER_STATE  (DCFX_SAMPLER_MAG_LINEAR | DCFX_SAMPLER_MIN_LINEAR | DCFX_EDGE_FUNC(DCFX_SAMPLER_EDGE_CLAMP, DCFX_SAMPLER_EDGE_CLAMP, DCFX_SAMPLER_EDGE_CLAMP))  
-
-    renderCtx->setTexture(colorSampler, texture, SAMPLER_STATE);
+    renderCtx->setTexture(colorSampler, texture, samplerState);
     
-    int vertices = VBOPosition * SpriteBatch::VerticesPerSprite;
-
+    // Batch size in bytes
     size_t size = count * SpriteBatch::VerticesPerSprite * sizeof(SpriteVertex);
+    
     SpriteVertex* data = (SpriteVertex*)renderCtx->frameAlloc(size);
 
-    for (int i = 0; i < count; i++) {
-	bufferSprite(vertices, sprites[i], data, i);
-	vertices += SpriteBatch::VerticesPerSprite;
+    // Convert sprite batch to vertex data
+    for (int i = 0; i < count; i++)
+    {
+	bufferSprite(sprites[i], data, i);
     }
 
-    uint32_t offset = VBOPosition * SpriteBatch::VerticesPerSprite * sizeof(SpriteVertex);
-    assert((offset + size) <= BatchSize * SpriteBatch::IndicesPerSprite * sizeof(uint32_t));
+    // Current offset for the vertex buffer
+    uint32_t offset = spriteCount * SpriteBatch::VerticesPerSprite * sizeof(SpriteVertex);
+    
+    assert((offset + size) <= MaxSprites * SpriteBatch::VerticesPerSprite * sizeof(SpriteVertex));
     
     renderCtx->updateBuffer(
 	vertexBuffer,
@@ -307,15 +312,15 @@ void SpriteBatch::renderBatch(
     renderCtx->setVertexBuffer(vertexBuffer, 0, 0);
     renderCtx->setIndexBuffer(
 	indexBuffer,
-	VBOPosition * SpriteBatch::IndicesPerSprite,
+	spriteCount * SpriteBatch::IndicesPerSprite,
 	SpriteBatch::IndicesPerSprite * count);
 
     renderCtx->submit(view);
 	
-    VBOPosition += count;
+    spriteCount += count;
 }
 
-void SpriteBatch::bufferSprite(int vertices, SpriteInfo* spriteInfo, SpriteVertex* data, int index)
+void SpriteBatch::bufferSprite(SpriteInfo* spriteInfo, SpriteVertex* data, int index)
 {
     static const glm::vec4 cornerOffsets[SpriteBatch::VerticesPerSprite] =
 	{
@@ -386,33 +391,25 @@ void SpriteBatch::sortSprites()
 	spriteSortList[i] = &spriteQueue[i];
     }
 
-    // NOTE: Mabey we want to sort by depth and texture in the future?
+    qsort(spriteSortList, spriteQueueCount, sizeof(SpriteInfo*), [](const void* a, const void* b)
+	  -> int
+	  {
+	      SpriteInfo* sa = *(SpriteInfo**)a;
+	      SpriteInfo* sb = *(SpriteInfo**)b;
 
-    // STUDY: Why does the c sorting routine return ints?
-    switch(sortMode)
-    {
-    case SpriteSortMode::TEXTURE:
-	qsort(spriteSortList, spriteQueueCount, sizeof(SpriteInfo*), [](const void* a, const void* b)
-	      -> int
-	      {
-		  return (*(SpriteInfo**)a)->texture.index - (*(SpriteInfo**)b)->texture.index;
-	      });
-	break;
-	
-    case SpriteSortMode::FRONTTOBACK:
-	qsort(spriteSortList, spriteQueueCount, sizeof(SpriteInfo*), [](const void* a, const void* b)
-	      -> int
-	      {
-		  return (int)((*(SpriteInfo**)a)->originRotationDepth.w - (*(SpriteInfo**)b)->originRotationDepth.w);
-	      });
-	break;
-		
-    case SpriteSortMode::BACKTOFRONT:
-	qsort(spriteSortList, spriteQueueCount, sizeof(SpriteInfo*), [](const void* a, const void* b)
-	      -> int
-	      {
-		  return (int)((*(SpriteInfo**)b)->originRotationDepth.w - (*(SpriteInfo**)a)->originRotationDepth.w);
-	      });
-	break;			
-    }
+	      // Sort front to back
+	      if (sa->originRotationDepth.w > sb->originRotationDepth.w)
+		  return -1;
+	      else if (sa->originRotationDepth.w < sb->originRotationDepth.w)
+		  return 1;
+
+	      // Sort by texture
+	      if (sa->texture.index > sb->texture.index)
+		  return -1;
+	      else if (sa->texture.index < sb->texture.index)
+		  return 1;
+	      else
+		  return 0;
+	      
+	  });
 }

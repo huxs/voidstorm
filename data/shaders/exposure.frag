@@ -5,7 +5,7 @@ uniform float Exposure;
 
 in vec2 fs_texCoord;
 
-layout(location = 0) out vec4 fragmentColor;
+out vec4 fragmentColor;
 
 void main()
 {
@@ -15,5 +15,5 @@ void main()
 
     vec3 color = hdr / (1+hdr);
 
-    fragmentColor = vec4(color, 1.0);
+    fragmentColor = vec4(hdr, 1.0);
 }

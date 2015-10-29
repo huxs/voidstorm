@@ -100,7 +100,7 @@ static void storeEffectParams(ParticleEffectDescription* effect, lua_State* luaS
 {
     lua_getfield(luaState, 1, "emitters");
 
-    int len = (int)lua_objlen(luaState, -1);
+    uint32_t len = (uint32_t)lua_objlen(luaState, -1);
 
     effect->count = len;
 
@@ -111,55 +111,58 @@ static void storeEffectParams(ParticleEffectDescription* effect, lua_State* luaS
     
     ParticleEmitterDescription* emitter = effect->emitter;
 
-    for(int i = 1; i < len + 1; ++i)
+    for(uint32_t i = 1; i < len + 1; ++i)
     {
 	lua_rawgeti(luaState, -1, i);
+
+	lua_getfield(luaState, -1, "bufferSizeTier");
+        emitter->bufferSizeTier = (int)lua_tonumber(luaState, -1);
+	lua_pop(luaState, 1);
 	
 	lua_getfield(luaState, -1, "particlesPerEmit");
         emitter->particlesPerEmit = (int)lua_tonumber(luaState, -1);
-	//PRINT("ParticlePerEmit %d\n", emitter->particlesPerEmit);
 	lua_pop(luaState, 1);
 	
-	lua_getfield(luaState, -1, "spawnTime");
+	lua_getfield(luaState, -1, "spawntime");
         emitter->spawnTime = (float)lua_tonumber(luaState, -1);
-	//PRINT("SpawnTime %f\n", emitter->spawnTime);
 	lua_pop(luaState, 1);
 
 	lua_getfield(luaState, -1, "lifetime");
         emitter->lifetime = (float)lua_tonumber(luaState, -1);
-	//PRINT("LifetimeMin %f\n", emitter->lifetimeMin);
 	lua_pop(luaState, 1);
 
 	lua_getfield(luaState, -1, "lifetimeMin");
         emitter->lifetimeMin = (float)lua_tonumber(luaState, -1);
-	//PRINT("LifetimeMin %f\n", emitter->lifetimeMin);
 	lua_pop(luaState, 1);
 
 	lua_getfield(luaState, -1, "lifetimeMax");
         emitter->lifetimeMax = (float)lua_tonumber(luaState, -1);
-	//PRINT("LifetimeMax %f\n", emitter->lifetimeMax);
 	lua_pop(luaState, 1);
 
 	lua_getfield(luaState, -1, "sizeMin");
         emitter->sizeMin = (float)lua_tonumber(luaState, -1);
-	//PRINT("SizeMin %f\n", emitter->sizeMin);
 	lua_pop(luaState, 1);
 
 	lua_getfield(luaState, -1, "sizeMax");
         emitter->sizeMax = (float)lua_tonumber(luaState, -1);
-	//PRINT("SizeMax %f\n", emitter->sizeMax);
 	lua_pop(luaState, 1);
 
 	lua_getfield(luaState, -1, "rotationMin");
         emitter->rotationMin = (float)lua_tonumber(luaState, -1);
-	//PRINT("RotationMin %f\n", emitter->rotationMin);
 	lua_pop(luaState, 1);
 
 	lua_getfield(luaState, -1, "rotationMax");
         emitter->rotationMax = (float)lua_tonumber(luaState, -1);
-	//PRINT("RotationMax %f\n", emitter->rotationMax);
 	lua_pop(luaState, 1);
 
+	lua_getfield(luaState, -1, "depthMin");
+        emitter->depthMin = (float)lua_tonumber(luaState, -1);
+	lua_pop(luaState, 1);
+
+	lua_getfield(luaState, -1, "depthMax");
+        emitter->depthMax = (float)lua_tonumber(luaState, -1);
+	lua_pop(luaState, 1);
+	
 	lua_getfield(luaState, -1, "colorMin");
 	emitter->colorMin = *(glm::vec4*)lua_touserdata(luaState, -1);
 	lua_pop(luaState, 1);
@@ -170,38 +173,30 @@ static void storeEffectParams(ParticleEffectDescription* effect, lua_State* luaS
 	
 	lua_getfield(luaState, -1, "startColor");
 	emitter->startColor = *(glm::vec4*)lua_touserdata(luaState, -1);
-	//PRINT("StartColor %f %f %f %f\n", emitter->startColor.x, emitter->startColor.y, emitter->startColor.z, emitter->startColor.w);
 	lua_pop(luaState, 1);
 
 	lua_getfield(luaState, -1, "endColor");
 	emitter->endColor = *(glm::vec4*)lua_touserdata(luaState, -1);
-	//PRINT("EndColor %f %f %f %f\n", emitter->endColor.x, emitter->endColor.y, emitter->endColor.z, emitter->endColor.w);
 	lua_pop(luaState, 1);
 
 	lua_getfield(luaState, -1, "force");
 	emitter->force = *(glm::vec2*)lua_touserdata(luaState, -1);
-	//PRINT("Force %f %f\n", emitter->force.x, emitter->force.y);
 	lua_pop(luaState, 1);
 
 	lua_getfield(luaState, -1, "spread");
         emitter->spread = (float)lua_tonumber(luaState, -1);
-	//PRINT("Spread %f\n", emitter->spread);
 	lua_pop(luaState, 1);
 
 	lua_getfield(luaState, -1, "position");
 	emitter->position = *(glm::vec2*)lua_touserdata(luaState, -1);
-	//PRINT("Position %f %f\n", emitter->position.x, emitter->position.y);
 	lua_pop(luaState, 1);
 
 	lua_getfield(luaState, -1, "relative");
 	emitter->relative = lua_toboolean(luaState, -1);
-	//PRINT("Relative %d\n", emitter->relative);
 	lua_pop(luaState, 1);
 
 	lua_getfield(luaState, -1, "texture");
 	emitter->texture = *(Texture**)lua_touserdata(luaState, -1);
-	if(emitter->texture)
-	    //PRINT("Texture %d\n", emitter->texture->handle);
 	lua_pop(luaState, 1);
         
 	lua_pop(luaState, 1);

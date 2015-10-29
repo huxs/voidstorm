@@ -1,12 +1,12 @@
 #version 330
 
-uniform sampler2D ColorMap;
+uniform sampler2D Scene;
 
 in vec2 fs_texCoord;
 
-layout(location = 0) out vec4 fragmentColor;
+ out vec4 fragmentColor;
 
 void main()
 {
-    fragmentColor = texture(ColorMap, fs_texCoord);
+    fragmentColor = texture(Scene, fs_texCoord);
 }

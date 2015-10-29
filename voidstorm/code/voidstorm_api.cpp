@@ -554,9 +554,9 @@ namespace api
     /*
        PARTICLE FUNCTIONS
     */
-    inline void toParticle(lua_State* luaState, ParticleHandle handle)
+    inline void toParticle(lua_State* luaState, ParticleEffectHandle handle)
     {
-	ParticleHandle* ud = (ParticleHandle*)lua_newuserdata(luaState, sizeof(ParticleHandle));
+	ParticleEffectHandle* ud = (ParticleEffectHandle*)lua_newuserdata(luaState, sizeof(ParticleEffectHandle));
 	*ud = handle;
     
 	lua_getglobal(luaState, "particle_m");
@@ -566,16 +566,17 @@ namespace api
     static int particlePlay(lua_State* luaState)
     {
 	VoidstormContext* context = getContext(luaState);
-	ParticleHandle handle = *(ParticleHandle*)lua_touserdata(luaState, 1);
-    
-	context->renderer->getParticleEngine()->play(handle);
+	ParticleEffectHandle handle = *(ParticleEffectHandle*)lua_touserdata(luaState, 1);
+	uint32_t frames = (uint32_t)lua_tointeger(luaState, 2);
+	
+	context->renderer->getParticleEngine()->play(handle, frames);
 	return 0;
     }
 
     static int particleStop(lua_State* luaState)
     {
 	VoidstormContext* context = getContext(luaState);
-	ParticleHandle handle = *(ParticleHandle*)lua_touserdata(luaState, 1);
+	ParticleEffectHandle handle = *(ParticleEffectHandle*)lua_touserdata(luaState, 1);
     
 	context->renderer->getParticleEngine()->stop(handle);
 	return 0;
@@ -584,7 +585,7 @@ namespace api
     static int particleSetPosition(lua_State* luaState)
     {
 	VoidstormContext* context = getContext(luaState);
-	ParticleHandle handle = *(ParticleHandle*)lua_touserdata(luaState, 1);
+	ParticleEffectHandle handle = *(ParticleEffectHandle*)lua_touserdata(luaState, 1);
 	glm::vec2 position = *(glm::vec2*)lua_touserdata(luaState, 2);
 
 	context->renderer->getParticleEngine()->setPosition(handle, position);
@@ -594,7 +595,7 @@ namespace api
     static int particleSetRotation(lua_State* luaState)
     {
 	VoidstormContext* context = getContext(luaState);
-	ParticleHandle handle = *(ParticleHandle*)lua_touserdata(luaState, 1);
+	ParticleEffectHandle handle = *(ParticleEffectHandle*)lua_touserdata(luaState, 1);
 	float rotation = (float)lua_tonumber(luaState, 2);
 
 	context->renderer->getParticleEngine()->setRotation(handle, rotation);
@@ -604,7 +605,7 @@ namespace api
     static int particleSetDepth(lua_State* luaState)
     {
 	VoidstormContext* context = getContext(luaState);
-	ParticleHandle handle = *(ParticleHandle*)lua_touserdata(luaState, 1);
+	ParticleEffectHandle handle = *(ParticleEffectHandle*)lua_touserdata(luaState, 1);
 	float depth = (float)lua_tonumber(luaState, 2);
 
 	context->renderer->getParticleEngine()->setDepth(handle, depth);
@@ -626,7 +627,7 @@ namespace api
 	VoidstormContext* context = getContext(luaState);
 	
 	ParticleEffectDescription* effectDesc = context->resources->effects.load(luaState);   
-	ParticleHandle handle = context->renderer->getParticleEngine()->createHandle(effectDesc);
+	ParticleEffectHandle handle = context->renderer->getParticleEngine()->createHandle(effectDesc);
     
 	toParticle(luaState, handle);    
 	return 1;
@@ -642,7 +643,7 @@ namespace api
     static int particleDelete(lua_State* luaState)
     {
 	VoidstormContext* context = getContext(luaState);
-	ParticleHandle handle = *(ParticleHandle*)lua_touserdata(luaState, 1);
+	ParticleEffectHandle handle = *(ParticleEffectHandle*)lua_touserdata(luaState, 1);
 
 	context->renderer->getParticleEngine()->deleteHandle(handle);    
 	return 0;

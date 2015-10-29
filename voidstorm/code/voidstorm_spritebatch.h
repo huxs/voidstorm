@@ -1,12 +1,5 @@
 #pragma once
 
-enum SpriteSortMode 
-{
-    TEXTURE,
-    BACKTOFRONT,
-    FRONTTOBACK
-};
-
 // NOTE: Padding issues on android.
 // XXX0 YY00 ZZZZ
 // XXXX YYY0 ZZ00
@@ -73,18 +66,18 @@ public:
 
     void write(const char* text, const glm::vec2& position);
 
-    void draw(int view);
+    void flush(int view);
 
-    inline void setSortMode(SpriteSortMode sortMode);
-    inline void setBlendState(uint32_t blendState);
-    inline void setCustomProgram(dcfx::ProgramHandle customProgram);
-    inline void setTexture(dcfx::TextureHandle texture);
-    inline void setDestination(const glm::vec4& destination);
-    inline void setSource(const glm::vec4& source);
-    inline void setColor(const glm::vec4& color);
-    inline void setOrigin(const glm::vec2& origin);
-    inline void setRotation(float rotation);
-    inline void setDepth(float depth);
+    void setBlendState(uint32_t blendState);
+    void setSamplerState(uint32_t samplerState);
+    void setCustomProgram(dcfx::ProgramHandle customProgram);
+    void setTexture(dcfx::TextureHandle texture);
+    void setDestination(const glm::vec4& destination);
+    void setSource(const glm::vec4& source);
+    void setColor(const glm::vec4& color);
+    void setOrigin(const glm::vec2& origin);
+    void setRotation(float rotation);
+    void setDepth(float depth);
 
     void submit();
     void reset();
@@ -93,11 +86,11 @@ private:
     void setRenderStates(int view);
     void flushBatch(int view);
     void renderBatch(int view, dcfx::TextureHandle texture, SpriteInfo** sprites, int count);
-    void bufferSprite(int vertices, SpriteInfo* sprite, SpriteVertex* data, int index);
+    void bufferSprite(SpriteInfo* sprite, SpriteVertex* data, int index);
     void sortSprites();
 	
-    static const int BatchSize = 65536;
-    static const int QueueSize = 4096;
+    static const int MaxSprites = (1 << 18); // Number of sprites 
+    static const int QueueSize = MaxSprites;
     static const int VerticesPerSprite = 4;
     static const int IndicesPerSprite = 6;
 
@@ -113,23 +106,23 @@ private:
     SpriteInfo spriteQueue[QueueSize];	
     uint32_t spriteQueueCount;
     SpriteInfo* spriteSortList[QueueSize];	
-    int VBOPosition;
+    uint32_t spriteCount;
 	
-    SpriteSortMode sortMode;
     uint32_t blendState;
+    uint32_t samplerState;
 
     // TODO (daniel): Later we probely want muliple fonts.
     SpriteFont defaultFont;
 };
 
-inline void SpriteBatch::setSortMode(SpriteSortMode sortMode)
-{
-    this->sortMode = sortMode;
-}
-
 inline void SpriteBatch::setBlendState(uint32_t blendState)
 {
     this->blendState = blendState;
+}
+
+inline void SpriteBatch::setSamplerState(uint32_t samplerState)
+{
+    this->samplerState = samplerState;
 }
 
 inline void SpriteBatch::setCustomProgram(dcfx::ProgramHandle customProgram)

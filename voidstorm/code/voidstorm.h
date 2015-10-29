@@ -4,21 +4,17 @@
   TODO (daniel):
   - x86 libs for utility/render.
   - opengl_glx for linux compabillity.
-  - font-writes from lua is currently only affected by the viewport and not the camera
-  and they are not batched properly.
   - camera entities would be pretty cool.
   - Optimization: Following of entities is very slow in lua 5x128 follow entities -> 20 ms (debug)
   do the math in C instead.
   - Optimization: Shapes are allocated in runtime, adding and removing shapes is a frequent operation
   and should not call to OS.
   - Optimization: SIMD on spritebatching.
-  - Varying particle buffers. Currently they have a fixed amount.
   - Set the source rectangle for a sprite.
   - Add shaders and fonts to resource manager.
   - Better debug view. Add voidstorm_debug.cpp. / Tweak debug variables from lua.
   
   TODO (daniel): *Potential Future*
-  - Generate a particle star system in the background.
   - CRT-Emulation mode.
   - Android (Touch Input etc..)
   - Polygon-Particle / Splines / Swirling particles.

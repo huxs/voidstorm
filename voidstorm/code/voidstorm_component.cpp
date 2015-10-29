@@ -101,7 +101,7 @@ TransformManager::Instance TransformManager::create(Entity e)
     map.add(stack, e, compIndex);
     
     data.entities[compIndex] = e;
-	data.position[compIndex] = glm::vec2(0, 0);
+    data.position[compIndex] = glm::vec2(0, 0);
     data.rotation[compIndex] = 0.0f;
     data.depth[compIndex] = 1.0f;
     data.scale[compIndex] = 1.0f;
@@ -161,10 +161,10 @@ PhysicsManager::Instance PhysicsManager::create(Entity e)
     int compIndex = data.used++;	
     map.add(stack, e, compIndex);
     data.entities[compIndex] = e;
-	data.mass[compIndex] = 1.0f;
-	data.force[compIndex] = glm::vec2(0, 0);
-	data.acceleration[compIndex] = glm::vec2(0, 0);
-	data.velocity[compIndex] = glm::vec2(0, 0);
+    data.mass[compIndex] = 1.0f;
+    data.force[compIndex] = glm::vec2(0, 0);
+    data.acceleration[compIndex] = glm::vec2(0, 0);
+    data.velocity[compIndex] = glm::vec2(0, 0);
     
 
     //PRINT("PhysicsComponent created for entity I:%d - G:%d!\n", e.index(), e.generation());

@@ -25,7 +25,6 @@ function GameInitialize()
    type.enemybullet = bit.lshift(1, 3)
    type.wall = bit.lshift(1, 4)
 
-   dofile "effect.lua"
    dofile "debug.lua"
    dofile "map.lua"
 
@@ -38,8 +37,7 @@ function GameInitialize()
    -- Initialize all the entities in the map.
    Map.start();
 
-   -- Non HDR values was 1.9, 1.0, 1.0
-   voidstorm.setPostProcessParams(1.9, 1.0, 0.0)
+   voidstorm.setPostProcessParams(3.0, 1.0, 0.0)
 
 end
 

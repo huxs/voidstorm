@@ -1,7 +1,6 @@
 dofile "fps.lua"
 
--- font.write should take a parameter if the text should transform with camera.
-
+-- Pass flags for what to debug render
 function debug_view()
 
    fps.update(dt)
@@ -11,17 +10,12 @@ function debug_view()
 
    p = 0
    for i,v in pairs(sprites) do
-      font.write("Entity: " .. i .. " Sprite: " .. tostring(v), vec2.new(10, p * 20 + 50), false)
+      --font.write("Entity: " .. i .. " Sprite: " .. tostring(v), vec2.new(10, p * 20 + 50), false)
+      --font.write("EntityID: " .. tostring(i), v:getPosition() + vec2.new(30, -30) , true)
       if v ~= nil then
 	 p = p + 1
       end
    end
-
-end
-
-function debug_entity(entity, index)
-
-   font.write("EntityID: " .. tostring(entity), vec2.new(10, 50 + index * 20), true)
 
 end
 

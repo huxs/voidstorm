@@ -102,7 +102,7 @@ struct CollisionResponderManager
 
 	int entityCount;
 
-	// TODO: Decide on max number of collisions per frame.
+	// TODO (daniel): Decide on max number of collisions per frame.
 	Entity entity[5];
 	glm::vec2 position[5];
     };
@@ -164,8 +164,8 @@ struct CollisionManager
 
 	ShapeData* shape;
 	        
-	DbvtNode** node; // reference to the physics data structure.
-	Contact* contact; // single linked list of contacts.
+	DbvtNode** node; // Reference to the physics data structure
+	Contact* contact; // Single linked list of contacts
 	
     } data;
 

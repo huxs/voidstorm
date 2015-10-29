@@ -1,7 +1,15 @@
 #include "../voidstorm_platform.h"
+#include "../voidstorm_config.h"
+#include <assert.h>
 
 #define PERMANENT_STORAGE_SIZE Megabytes(256)
 #define TRANSIENT_STORAGE_SIZE Megabytes(128)
+
+static_assert((VOIDSTORM_APPLICATION_HEAP_SIZE
+	      + VOIDSTORM_RENDER_HEAP_SIZE
+	      + VOIDSTORM_APPLICATION_PERMANENT_STACK_SIZE
+	      + VOIDSTORM_APPLICATION_WORLD_STACK_SIZE) <= PERMANENT_STORAGE_SIZE,
+	      "The application is asking for more memory then the platform layer supplies.");
 
 static void printGetLastError()
 {

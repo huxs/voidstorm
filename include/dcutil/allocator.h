@@ -74,6 +74,7 @@ namespace dcutil
 	PoolAllocator(void* base, size_t elementSize, size_t numElements)
 	    {
 		m_start = (PoolElement*)base;
+		a = 0;
 		
 		union 
 		{
@@ -98,6 +99,7 @@ namespace dcutil
 
 	void* alloc(size_t size)
 	    {
+		a++;
 		assert(m_next != nullptr && "Out of elements!");
 		
 		PoolElement* head = m_next;
@@ -107,6 +109,7 @@ namespace dcutil
 
 	void free(void* mem)
 	    {
+		a--;
 		if (mem == nullptr) return;
 		
 		PoolElement* head = (PoolElement*)mem;
@@ -116,5 +119,6 @@ namespace dcutil
 
 	PoolElement* m_start;
 	PoolElement* m_next;
+	int a;
     };
 }

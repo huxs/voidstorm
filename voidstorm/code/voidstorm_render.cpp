@@ -1,11 +1,9 @@
 #include <SDL2/SDL_syswm.h>
 
-const float Renderer::GaussBlurSigma = 1.0f;
+const float Renderer::GaussBlurSigma = 3.0f;
 const float Renderer::GaussBlurTapSize = 1.0f;
 const float Renderer::Exposure = 0.0f;
-
-// TODO (daniel): Not a big fan of this constant
-const float Renderer::CameraZoom = 1280.0f;
+const float Renderer::ZoomFactor = 0.0f;
 
 struct Vertex1P1UV
 {
@@ -35,7 +33,7 @@ Renderer::Renderer(HeapAllocator* heap, dcutil::StackAllocator* perm, dcutil::St
     
     SDL_GetWindowSize(window, &resolution.x, &resolution.y);
 
-    metersToPixels = ((float)resolution.x / CameraZoom);
+	aspectRatio = (float)resolution.y / resolution.x;
 
     SDL_SysWMinfo info;
     SDL_VERSION(&info.version);
@@ -133,11 +131,12 @@ void Renderer::setResolution(glm::ivec2 resolution)
 #ifndef ANDROID    
     this->resolution = resolution;
 
-    // TODO: This is a slow way of resizing the framebuffers.
+    // TODO (daniel): This is a slow way of resizing the framebuffers.
     deleteFramebuffers();
     createFramebuffers();
 
-    metersToPixels = ((float)resolution.x / CameraZoom);
+    aspectRatio = (float)resolution.y / resolution.x;
+    
 #endif    
 }
 
@@ -166,12 +165,23 @@ void Renderer::setPostProcessParams(float blurSigma, float blurTapSize, float ex
 
 void Renderer::write(const char* text, const glm::vec2& position, bool32 inWorld)
 {
-    spritebatch->write(text, position);
+    if(inWorld)
+	bufferedTextInWorld.push_back({ text, position });
+    else
+	bufferedText.push_back({ text, position });
 }
 
 void Renderer::render(World* world)
 {
     TIME_BLOCK(Render);
+
+    static const uint32_t LinearSampler =
+	(DCFX_SAMPLER_MAG_LINEAR | DCFX_SAMPLER_MIN_LINEAR | DCFX_EDGE_FUNC(
+	    DCFX_SAMPLER_EDGE_CLAMP, DCFX_SAMPLER_EDGE_CLAMP, DCFX_SAMPLER_EDGE_REPEAT));
+
+    static const uint32_t PointSampler =
+	(DCFX_SAMPLER_MAG_NEAREST | DCFX_SAMPLER_MIN_NEAREST | DCFX_EDGE_FUNC(
+	    DCFX_SAMPLER_EDGE_CLAMP, DCFX_SAMPLER_EDGE_CLAMP, DCFX_SAMPLER_EDGE_REPEAT));
     
     const glm::mat4& viewportTransform = getViewportTransform();
     const glm::mat4& viewportCameraTransform = viewportTransform * getCameraTransform();
@@ -180,16 +190,27 @@ void Renderer::render(World* world)
     renderCtx->setView(RENDERPASS_WORLD, viewportCameraTransform);
     renderCtx->setView(RENDERPASS_DEBUG, viewportCameraTransform);
 
-    // NOTE: Draws fonts to output target.
-    spritebatch->draw(RENDERPASS_OUTPUT);
+    spritebatch->setSamplerState(LinearSampler);
+    spritebatch->setBlendState(DCFX_DEFAULT_STATE_ADDATIVE);
 
-    // NOTE: Render all sprites to a offscreen render target for post-processing.
+    for(uint32_t i = 0; i < bufferedText.size(); ++i)
+    {
+	BufferedText& text = bufferedText[i];	
+	spritebatch->write(text.text.c_str(), text.position);
+    }
+
+    spritebatch->flush(RENDERPASS_OUTPUT);
+    
+    // Render all sprites, in world text and particles to a offscreen render target
     renderCtx->setFramebuffer(RENDERPASS_WORLD, sceneFramebuffer);
     renderCtx->setViewport(RENDERPASS_WORLD, glm::ivec4(0, 0, resolution.x, resolution.y));
 
-    spritebatch->setBlendState(DCFX_DEFAULT_STATE_ADDATIVE);
-    spritebatch->setSortMode(SpriteSortMode::BACKTOFRONT);	
-
+    for(uint32_t i = 0; i < bufferedTextInWorld.size(); ++i)
+    {
+	BufferedText& text = bufferedTextInWorld[i];
+	spritebatch->write(text.text.c_str(), text.position);
+    }
+    
     for(uint32_t i = 1; i < world->sprites.data.used; ++i)
     {
 	Entity e = world->sprites.data.entities[i];
@@ -204,58 +225,58 @@ void Renderer::render(World* world)
 	glm::vec2 pos = world->transforms.data.position[transform.index];
 	float rotation = world->transforms.data.rotation[transform.index];
 	float depth = world->transforms.data.depth[transform.index];
-	float cscale = world->transforms.data.scale[transform.index];
+	float cscale = world->transforms.data.scale[transform.index]; 
 
-	// Perspective projection.
+	// Perspective projection
 	glm::vec2 projectedXY = (1.0f / depth) * pos;
-	float scale = (1.0f/depth)*cscale;
+	float scale = 1.0f / depth;
 	
 	spritebatch->setDestination(glm::vec4(projectedXY.x, projectedXY.y,
-					      size.x*scale, size.y*scale));
+					      size.x * cscale * scale, size.y * cscale * scale));
 	spritebatch->setRotation(rotation);
 	spritebatch->setOrigin(origin);
-	if(texture != NULL)
 	spritebatch->setTexture(texture->handle);
 	spritebatch->setSource(glm::vec4(0,0,1,1));
 	spritebatch->setColor(color);
-	spritebatch->setDepth((float)i);
+	spritebatch->setDepth(depth);
 	spritebatch->submit();
     }
 
-    // TODO: Sort sprtes and particles together.
-    spritebatch->draw(RENDERPASS_WORLD);
-
     particle->render(RENDERPASS_WORLD);
+    
+    spritebatch->flush(RENDERPASS_WORLD);
 
-    // NOTE: Render using fullscreen quad.
+    spritebatch->setSamplerState(PointSampler);
+    
+    // Render using fullscreen quad
     renderCtx->setState(DCFX_DEFAULT_STATE_NOBLEND);
     renderCtx->setVertexBuffer(fsqVertexBuffer);
     renderCtx->setIndexBuffer(fsqIndexBuffer, 0, 6);
     
-    // NOTE: Downsample 4x.
+    // Downsample
     renderCtx->setFramebuffer(RENDERPASS_POSTPROCESS, blurFramebuffer0);
     renderCtx->setViewport(RENDERPASS_POSTPROCESS, glm::ivec4(0, 0, blurSizeX, blurSizeY));
     renderCtx->setTexture(colorSampler, sceneTexture, SAMPLER_STATE);
     renderCtx->setProgram(outputProgram);
     renderCtx->submit(RENDERPASS_POSTPROCESS);		
 
-    // NOTE: Blur horizontal.
+    // Blur horizontal
     renderCtx->setFramebuffer(RENDERPASS_POSTPROCESS + 1, blurFramebuffer1);
     renderCtx->setViewport(RENDERPASS_POSTPROCESS + 1, glm::ivec4(0, 0, blurSizeX, blurSizeY));
     renderCtx->setTexture(colorSampler, blurTexture0, SAMPLER_STATE);
     renderCtx->setProgram(blurHorizontalProgram);
     renderCtx->submit(RENDERPASS_POSTPROCESS + 1);
 
-    // NOTE: Blur vertical.
+    // Blur vertical
     renderCtx->setFramebuffer(RENDERPASS_POSTPROCESS + 2, blurFramebuffer0);
     renderCtx->setViewport(RENDERPASS_POSTPROCESS + 2, glm::ivec4(0, 0, blurSizeX, blurSizeY));
     renderCtx->setTexture(colorSampler, blurTexture1, SAMPLER_STATE);
     renderCtx->setProgram(blurVerticalProgram);
     renderCtx->submit(RENDERPASS_POSTPROCESS + 2);	
 
-#ifndef ANDROID    
-    // NOTE: Render to HDR target and do color correction.
-    // NOTE: Render blurred result.
+#if 1
+    // Render to HDR target and do color correction.
+    // Render blurred result.
     renderCtx->setFramebuffer(RENDERPASS_POSTPROCESS + 3, exposureFramebuffer);
     renderCtx->setViewport(RENDERPASS_POSTPROCESS + 3, glm::ivec4(0, 0, resolution.x, resolution.y));
     renderCtx->setTexture(colorSampler, blurTexture0, SAMPLER_STATE);
@@ -268,13 +289,13 @@ void Renderer::render(World* world)
 	 DCFX_STATE_CULL_CCW |
 	 DCFX_STATE_DEPTH_TEST_ALWAYS));
     
-    // NOTE: Render original scene.
+    // Render original scene
     renderCtx->setViewport(RENDERPASS_POSTPROCESS + 3, glm::ivec4(0, 0, resolution.x, resolution.y));
     renderCtx->setTexture(colorSampler, sceneTexture, SAMPLER_STATE);
     renderCtx->setProgram(outputProgram);
     renderCtx->submit(RENDERPASS_POSTPROCESS + 3);
 
-    // NOTE: Output to backbuffer.
+    // Output to backbuffer
     renderCtx->setViewport(RENDERPASS_OUTPUT, glm::ivec4(0, 0, resolution.x, resolution.y));
     renderCtx->setTexture(colorSampler, exposureTexture, SAMPLER_STATE);
     renderCtx->setProgram(exposureProgram);
@@ -287,8 +308,9 @@ void Renderer::render(World* world)
     renderCtx->submit(RENDERPASS_OUTPUT);
 #endif
 
-    // NOTE: Render debug information such as lines, graphs etc.
+    //Render debug information such as lines, graphs etc
     linerenderer->dispatch(RENDERPASS_DEBUG);
+
 }
 
 void Renderer::frame()
@@ -297,6 +319,8 @@ void Renderer::frame()
     
     spritebatch->reset();
     linerenderer->reset();
+    bufferedText.clear();
+    bufferedTextInWorld.clear();
     
     renderCtx->frame();
 }
@@ -316,12 +340,12 @@ void Renderer::deleteFramebuffers()
 
 void Renderer::createFramebuffers()
 {    
-    blurSizeX = resolution.x / 4;
-    blurSizeY = resolution.y / 4;
+    blurSizeX = resolution.x / 2;
+    blurSizeY = resolution.y / 2;
 	
-    sceneTexture = renderCtx->createTexture(resolution.x, resolution.y, dcfx::TextureFormat::RGBA8);
-    blurTexture0 = renderCtx->createTexture(blurSizeX, blurSizeY, dcfx::TextureFormat::RGBA8);
-    blurTexture1 = renderCtx->createTexture(blurSizeX, blurSizeY, dcfx::TextureFormat::RGBA8);
+    sceneTexture = renderCtx->createTexture(resolution.x, resolution.y, dcfx::TextureFormat::RGBA32F);
+    blurTexture0 = renderCtx->createTexture(blurSizeX, blurSizeY, dcfx::TextureFormat::RGBA32F);
+    blurTexture1 = renderCtx->createTexture(blurSizeX, blurSizeY, dcfx::TextureFormat::RGBA32F);
     exposureTexture = renderCtx->createTexture(resolution.x, resolution.y, dcfx::TextureFormat::RGBA32F);
 
     sceneFramebuffer = renderCtx->createFramebuffer(&sceneTexture, 1);	

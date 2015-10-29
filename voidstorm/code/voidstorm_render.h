@@ -31,7 +31,7 @@ public:
     
     dcfx::Context* getContext() { return renderCtx; }
     LineRenderer* getLineRenderer() { return linerenderer; }
-    ParticleEngine* getParticleEngine() { return particle; }
+    ParticleEngine* getParticleEngine() { return particle; } 
 
     void write(const char* text, const glm::vec2& position, bool32 inWorld);
     
@@ -43,13 +43,13 @@ private:
     void createFramebuffers();
     void defaultValues();
 
-    inline glm::mat4 getCameraTransform();
-    inline glm::mat4 getViewportTransform();
+    glm::mat4 getCameraTransform();
+    glm::mat4 getViewportTransform();
     
     static const float GaussBlurSigma;
     static const float GaussBlurTapSize;
     static const float Exposure;
-    static const float CameraZoom;
+    static const float ZoomFactor;
 
     SDL_Window* window;   
     dcfx::Context* renderCtx;
@@ -59,8 +59,17 @@ private:
 
     Camera renderCamera;
     glm::ivec2 resolution;
-    float metersToPixels;
+    float aspectRatio;
     bool isFullscreen;
+
+    struct BufferedText
+    {
+	tinystl::string text;
+	glm::vec2 position;
+    };
+    
+    tinystl::vector<BufferedText> bufferedText;
+    tinystl::vector<BufferedText> bufferedTextInWorld;
     
     dcfx::BufferHandle fsqVertexBuffer;
     dcfx::BufferHandle fsqIndexBuffer;
@@ -97,8 +106,8 @@ inline glm::mat4 Renderer::getCameraTransform()
 	1.0f, 0.0f, 0.0f, 0.0f,
 	0.0f, 1.0f, 0.0f, 0.0f,
 	0.0f, 0.0f, 1.0f, 0.0f,
-	-renderCamera.position.x + resolution.x / (2.0f*metersToPixels),
-	-renderCamera.position.y + resolution.y / (2.0f*metersToPixels), 0.0f, 1.0f
+	-renderCamera.position.x + (resolution.x + (ZoomFactor * resolution.x)) / 2.0f,
+	-renderCamera.position.y + (resolution.y + (ZoomFactor * resolution.y)) / 2.0f, 0.0f, 1.0f
 	);
 }
 
@@ -114,8 +123,8 @@ inline glm::mat4 Renderer::getViewportTransform()
        0,Height     Width,Height */
     
     return glm::mat4(
-	(2.0f / resolution.x), 0.0f, 0.0f, 0.0f,
-	0.0f, (-2.0f / resolution.y), 0.0f, 0.0f,
+	(2.0f / (resolution.x +  (ZoomFactor * resolution.x))), 0.0f, 0.0f, 0.0f,
+	0.0f, (-2.0f / (resolution.y + (ZoomFactor * resolution.y))), 0.0f, 0.0f,
 	0.0f, 0.0f, 1.0f, 0.0f,
 	-1.0f, 1.0f, 0.0f, 1.0f
 	);

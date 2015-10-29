@@ -1,9 +1,14 @@
 #pragma once
 
-// Effect handle?
-struct ParticleHandle { uint16_t index; };
+struct ParticleEffectHandle { uint16_t index; };
 
-// Effect system?
+static const uint32_t s_particleBufferSize[] = 
+{
+    128,
+    1024,
+    2048
+};
+    
 class ParticleEngine
 {
 public:
@@ -11,23 +16,24 @@ public:
 
     void reset();
     
-    ParticleHandle createHandle(ParticleEffectDescription* desc);
-    void deleteHandle(ParticleHandle handle);
+    ParticleEffectHandle createHandle(ParticleEffectDescription* desc);
+    void deleteHandle(ParticleEffectHandle handle);
 
-    void play(ParticleHandle handle);
-    void stop(ParticleHandle handle);
+    void play(ParticleEffectHandle handle, uint32_t frames);
+    void stop(ParticleEffectHandle handle);
     
-    void setPosition(ParticleHandle handle, const glm::vec2& position);
-    void setRotation(ParticleHandle handle, float rotation);
-    void setDepth(ParticleHandle handle, float depth);
+    void setPosition(ParticleEffectHandle handle, const glm::vec2& position);
+    void setRotation(ParticleEffectHandle handle, float rotation);
+    void setDepth(ParticleEffectHandle handle, float depth);
     
     void update(float dt);
     void render(int view);
+    void debug(int view);
 
 private:
 
     static const int MaxEffects = 1000;
-    static const int MaxEmittersPerEffect = 128;
+    static const int MaxEmittersPerEffect = 1000;
     static const int MaxEmitters = 5000;
 
     struct Particle
@@ -37,26 +43,27 @@ private:
 	glm::vec2 velocity;
 	glm::vec4 color;
 	glm::vec2 size;
+        float depth;
 	float rotation;
 	float time;
 	float lifetime;
 	Texture* texture;
     };
 
-    enum class ParticleBufferSizeTier
+    enum ParticleBufferSizeTier
     {
 	LOW,
 	MEDIUM,
-	HIGH
+	HIGH,
     };
-    
+
     struct ParticleBuffer
     {
 	ParticleBuffer() : particles(nullptr) {}
     
 	Particle* particles;
-	int size;
-	int used;
+	uint32_t size;
+	uint32_t used;
     };
 
     enum class EmitterState
@@ -65,10 +72,13 @@ private:
 	ENDING, // Emittter has stoped, but simulate remaining particles
 	FINNISHED // All particles in the emitter has passed it's lifetime
     };
+
+    /* TODO (daniel): Remove the state from the struct and create multiple
+       venues for the emitter to live instead */
     
     struct ParticleEmitter
     {
-	ParticleEmitterDescription* emitter;
+	ParticleEmitterDescription* desc;
 	glm::vec2 position;
 	float rotation;
 	float depth;
@@ -110,7 +120,7 @@ private:
     dcutil::HandleAllocator<MaxEmitters> emitterHandles;
     ParticleEmitter emitters[MaxEmitters];
     ParticleEmitter* emittersInPlay[MaxEmitters];
-    int emittersInPlayCount;
+    uint32_t emittersInPlayCount;
 
     dcutil::PoolAllocator memoryPools[3];
 };

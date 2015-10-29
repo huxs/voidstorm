@@ -1,81 +1,58 @@
--- Thruster effect descripton used by the player ship
-thruster = ParticleEffect("thruster")
+bufferSizeTier = {}
+bufferSizeTier.low = 0
+bufferSizeTier.medium = 1
+bufferSizeTier.high = 2
 
-local lifetimeMin = 0.1
-local lifetimeMax = 0.5
-local sizeMin = 0.2
-local sizeMax = 0.4
-local spreadAngle = 90
-local rightPosition = vec2.new(7, 24)
-local leftPosition = vec2.new(-7, 24)
-local idleThrusterForce = vec2.new(75, 75)
-local thrusterTexture = texture.new("boulder.dds")
+ParticleEmitter = class(nil)
 
-thruster_emitter0 = thruster:addEmitter()
-thruster_emitter0.lifetimeMin = lifetimeMin
-thruster_emitter0.lifetimeMax = lifetimeMax
-thruster_emitter0.sizeMin = sizeMin
-thruster_emitter0.sizeMax = sizeMax
-thruster_emitter0.spread = spreadAngle
-thruster_emitter0.position = rightPosition
-thruster_emitter0.texture = thrusterTexture
+function ParticleEmitter:new()
+   self.particlesPerEmit = 1
+   self.spawntime = 0.5
+   self.lifetime = 0;
+   self.lifetimeMin = 1.0
+   self.lifetimeMax = 1.0
+   self.rotationMin = 0.0
+   self.rotationMax = 0.0
+   self.sizeMin = 1.0
+   self.sizeMax = 1.0
+   self.depthMin = 0.0
+   self.depthMax = 0.0
+   self.bufferSizeTier = bufferSizeTier.low
+   self.colorMin = color.new(1,1,1,1)
+   self.colorMax = color.new(1,1,1,1)
+   self.startColor = color.new(1,1,1,1)
+   self.endColor = color.new(1,1,1,0)   
+   self.force = vec2.new(1,0)
+   self.spread = 0 -- angle
+   self.position = vec2.new(0,0)
+   self.relative = true
+   self.texture = nil   
+end
 
-thruster_emitter1 = thruster:addEmitter()
-thruster_emitter1.lifetimeMin = lifetimeMin
-thruster_emitter1.lifetimeMax = lifetimeMax
-thruster_emitter1.sizeMin = sizeMin
-thruster_emitter1.sizeMax = sizeMax
-thruster_emitter1.spread = spreadAngle
-thruster_emitter1.position = leftPosition
-thruster_emitter1.texture = thrusterTexture
+ParticleEffect = class(nil)
 
-thruster_emitter2 = thruster:addEmitter()
-thruster_emitter2.lifetimeMin = lifetimeMin
-thruster_emitter2.lifetimeMax = lifetimeMax
-thruster_emitter2.sizeMin = sizeMin - 0.1
-thruster_emitter2.sizeMax = sizeMax
-thruster_emitter2.force = idleThrusterForce
-thruster_emitter2.spread = spreadAngle
-thruster_emitter2.position = rightPosition
-thruster_emitter2.texture = thrusterTexture
+function ParticleEffect:new(name)
+   print("Creating effect " .. name)
+   self.name = name   
+   self.emitters = {}
+end
 
-thruster_emitter3 = thruster:addEmitter()
-thruster_emitter3.lifetimeMin = lifetimeMin
-thruster_emitter3.lifetimeMax = lifetimeMax
-thruster_emitter3.sizeMin = sizeMin - 0.1
-thruster_emitter3.sizeMax = sizeMax
-thruster_emitter3.force = idleThrusterForce
-thruster_emitter3.spread = spreadAngle
-thruster_emitter3.position = leftPosition
-thruster_emitter3.texture = thrusterTexture
-thruster:store()
+function ParticleEffect:addEmitter()
+   local emitter = ParticleEmitter()
+   table.insert(self.emitters, emitter)
+   return emitter
+end
 
--- Effect descripton for a trailing particle effect following bullets
-testeffect = ParticleEffect("testeffect")
-testeffect_emitter0 = testeffect:addEmitter()
-testeffect_emitter0.particlesPerEmit = 1
-testeffect_emitter0.spawnTime = 0.1
-testeffect_emitter0.lifetimeMin = 2.0
-testeffect_emitter0.lifetimeMax = 3.0
-testeffect_emitter0.sizeMin = 0.2
-testeffect_emitter0.sizeMax = 0.5
-testeffect_emitter0.rotationMin = 0.0
-testeffect_emitter0.rotationMax = 3.14
-testeffect_emitter0.startColor = color.new(1,0,0,1)
-testeffect_emitter0.endColor = color.new(1,1,1,0)
-testeffect_emitter0.force = vec2.new(100,100)
-testeffect_emitter0.spread = 360
-testeffect_emitter0.position = vec2.new(0, 0)
-testeffect_emitter0.relative = true
-testeffect_emitter0.texture = texture.new("diamond.dds")
-testeffect:store()
+function ParticleEffect:store()
+   particle.store(self)
+end
 
 -- Explosion effect description when an enemy explodes
 explosion = ParticleEffect("explosion")
 explosion_emitter0 = explosion:addEmitter()
 explosion_emitter0.particlesPerEmit = 36
 explosion_emitter0.lifetime = 0.5
-explosion_emitter0.spawnTime = 0.5
+explosion_emitter0.spawntime = 0.5
 explosion_emitter0.lifetimeMin = 0.3
 explosion_emitter0.lifetimeMax = 0.5
 explosion_emitter0.sizeMin = 0.2
@@ -93,24 +70,27 @@ explosion_emitter0.relative = true
 explosion_emitter0.texture = texture.new("boulder.dds")
 explosion:store()
 
-local starsystem_emitterCount = 17;
+-- Example on making a spiral particle system
+spiral = ParticleEffect("spiral")
+spiral_emitter = spiral:addEmitter()
+spiral_emitter.bufferSizeTier = bufferSizeTier.high
+spiral_emitter.particlesPerEmit = 10
+spiral_emitter.spawntime = 0.005
+spiral_emitter.lifetimeMin = 0.5
+spiral_emitter.lifetimeMax = 1
+spiral_emitter.relative = true
+spiral_emitter.force = vec2.new(1000,1000)
+spiral_emitter.spread = 0
+spiral_emitter.position = vec2.new(15, 0)
+spiral_emitter.texture = texture.new("pixel.dds")
+spiral_emitter.sizeMin = 4
+spiral_emitter.sizeMax = 4
+spiral_emitter.depthMin = 1
+spiral_emitter.depthMax = 2
+spiral_emitter.rotationMin = 0.0
+spiral_emitter.rotationMax = 0.0
+spiral:store()
 
-starsystem = ParticleEffect("starsystem")
-for i = 1, starsystem_emitterCount, 1 do
-      local emitter = starsystem:addEmitter()
-      emitter.particlesPerEmit = 5
-      emitter.lifetime = 0 -- infinite
-      emitter.spawnTime = 0 -- only initial spawn
-      emitter.lifetimeMin = 0 -- live forever
-      emitter.lifetimeMax = 0
-      emitter.sizeMin = 1
-      emitter.sizeMax = 1
-      emitter.colorMin = color.new(0,0,0,1)
-      emitter.colorMax = color.new(1,1,1,1)
-      emitter.force = vec2.new(0.01,0.01)
-      emitter.relative = false
-      emitter.spread = 360
-      emitter.position = vec2.new(100 * i, 100 * i)
-      emitter.texture = texture.new("pixel.dds")
-end
-starsystem:store()
+
+
+

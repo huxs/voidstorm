@@ -199,7 +199,8 @@ int main(int argv, char** argc)
 	    VOIDSTORM_APPLICATION_PERMANENT_STACK_SIZE);
 
 	uint8_t* worldStackPtr = (uint8_t*)permStackPtr + VOIDSTORM_APPLICATION_PERMANENT_STACK_SIZE;
-	dcutil::StackAllocator* worldStack = new(worldStackPtr) dcutil::StackAllocator(worldStackPtr + sizeof(dcutil::StackAllocator), VOIDSTORM_APPLICATION_PERMANENT_STACK_SIZE);
+	dcutil::StackAllocator* worldStack = new(worldStackPtr) dcutil::StackAllocator(worldStackPtr + sizeof(dcutil::StackAllocator),
+										       VOIDSTORM_APPLICATION_WORLD_STACK_SIZE);
 
 	HeapAllocator renderAllocator(renderSpace);	
 	Renderer* renderer = new(permanentStack->alloc(sizeof(Renderer))) Renderer(&renderAllocator, permanentStack, worldStack);
@@ -480,7 +481,7 @@ int main(int argv, char** argc)
 	    renderer->getParticleEngine()->update(gameInput.dt);
 
 	    renderer->render(world);
-	
+
 	    renderer->frame();
 	
 #ifdef VOIDSTORM_INTERNAL

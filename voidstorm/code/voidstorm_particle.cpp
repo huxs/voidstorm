@@ -7,9 +7,17 @@ ParticleEngine::ParticleEngine(dcutil::StackAllocator* _stack, dcfx::Context* _r
 {
     srand((unsigned int)time(NULL));
 
-    memoryPools[0] = dcutil::PoolAllocator(_stack->alloc(128  * 10000), 128,  10000);
-    memoryPools[1] = dcutil::PoolAllocator(_stack->alloc(512  * 100),   512,  100);
-    memoryPools[2] = dcutil::PoolAllocator(_stack->alloc(1024 * 100),   1024, 10);
+    memoryPools[0] = dcutil::PoolAllocator(
+	_stack->alloc(s_particleBufferSize[0] * 10000 * sizeof(Particle)),
+	s_particleBufferSize[0] * sizeof(Particle), 10000);
+    
+    memoryPools[1] = dcutil::PoolAllocator(
+	_stack->alloc(s_particleBufferSize[1]  * 100 * sizeof(Particle)),
+	s_particleBufferSize[1] * sizeof(Particle), 100);
+    
+    memoryPools[2] = dcutil::PoolAllocator(
+	_stack->alloc(s_particleBufferSize[2] * 10 * sizeof(Particle)),
+	s_particleBufferSize[2] * sizeof(Particle), 10);
 }
 
 void ParticleEngine::reset()
@@ -32,52 +40,70 @@ void ParticleEngine::reset()
     }
 }
 
-ParticleHandle ParticleEngine::createHandle(ParticleEffectDescription* desc)
+ParticleEffectHandle ParticleEngine::createHandle(ParticleEffectDescription* desc)
 {
-    ParticleHandle handle = { effectHandles.alloc() };
+    ParticleEffectHandle handle = { effectHandles.alloc() };
     assert(handle.index < ARRAYSIZE(effects));
     ParticleEffect* effect = &effects[handle.index];  
     effect->desc = desc;
 
     ParticleEmitterDescription* emitterDesc = desc->emitter;
-    for(int i = 0; i < desc->count; ++i)
+    for(uint32_t i = 0; i < desc->count; ++i)
     {
 	EmitterHandle emitterHandle = { emitterHandles.alloc() };
 	assert(emitterHandle.index < ARRAYSIZE(emitters));
 	ParticleEmitter* emitter = &emitters[emitterHandle.index];
-	emitter->emitter = emitterDesc;
-	
+		
 	assert(i < ARRAYSIZE(effect->emitters));
 	effect->emitters[i] = emitterHandle;
 
-	static const int NumParticles = 100;
+	ParticleBufferSizeTier tier = (ParticleBufferSizeTier)emitterDesc->bufferSizeTier;
 
+	// Empty buffer allocate it
 	if(emitter->b0.particles == nullptr)
 	{
-	    emitter->b0.particles = (Particle*)stack->alloc(NumParticles * sizeof(Particle));
-	    emitter->b1.particles = (Particle*)stack->alloc(NumParticles * sizeof(Particle));
+	    emitter->b0.particles = (Particle*)memoryPools[tier].alloc(0);
+	    emitter->b1.particles = (Particle*)memoryPools[tier].alloc(0);
+	}
+	else
+	{
+	    // Buffer exist but of wrong tier
+	    if(emitter->desc->bufferSizeTier != emitterDesc->bufferSizeTier)
+	    {
+		ParticleBufferSizeTier oldTier = (ParticleBufferSizeTier)emitter->desc->bufferSizeTier;
+
+		memoryPools[oldTier].free(emitter->b0.particles);
+		memoryPools[oldTier].free(emitter->b1.particles);
+
+		emitter->b0.particles = (Particle*)memoryPools[tier].alloc(0);
+		emitter->b1.particles = (Particle*)memoryPools[tier].alloc(0);
+	    }
 	}
 
-	emitter->b0.size = NumParticles;
+	emitter->b0.size = s_particleBufferSize[tier];
 	emitter->b0.used = 0;
 
-	emitter->b1.size = NumParticles;
+	emitter->b1.size = s_particleBufferSize[tier];
 	emitter->b1.used = 0;
 
 	emitter->active = &emitter->b0;
 	emitter->second = &emitter->b1;
 
-	emitter->time = emitter->emitter->spawnTime;
+	emitter->time = emitterDesc->spawnTime;
 	emitter->lifetime = 0;
+
+	// Remove 
         emitter->state = EmitterState::EMITTING;
 
+	emitter->desc = emitterDesc;
+	
 	emitterDesc = emitterDesc->next;
     }
 
     return handle;
 };
 
-void ParticleEngine::deleteHandle(ParticleHandle handle)
+void ParticleEngine::deleteHandle(ParticleEffectHandle handle)
 {
     ParticleEffect* effect = &effects[handle.index];
     
@@ -88,47 +114,46 @@ void ParticleEngine::deleteHandle(ParticleHandle handle)
     }
 }
 
-void ParticleEngine::play(ParticleHandle handle)
+void ParticleEngine::play(ParticleEffectHandle handle, uint32_t frames)
 {
     effectsInPlay[handle.index] = &effects[handle.index];
 
     ParticleEffect* effect = effectsInPlay[handle.index];
     
-    for(int j = 0; j < effect->desc->count; ++j)
+    for(uint32_t j = 0; j < effect->desc->count; ++j)
     {
 	ParticleEmitter* emitter = &emitters[effect->emitters[j].index];
 
-	if(emitter->emitter->spawnTime == 0)
+	if(emitter->desc->spawnTime == 0)
 	{
 	    spawn(emitter);
 	}	
     }
 
-	/*
     float dt = 0.016f;
-    for(int i = 0; i < 7500; ++i)
+    for(uint32_t i = 0; i < frames; ++i)
     {
 	update(dt);
 	swap();
-    }*/
+    }
 }
 
-void ParticleEngine::stop(ParticleHandle handle)
+void ParticleEngine::stop(ParticleEffectHandle handle)
 {
     effectsInPlay[handle.index] = nullptr;
 }
 
-void ParticleEngine::setPosition(ParticleHandle handle, const glm::vec2& position)
+void ParticleEngine::setPosition(ParticleEffectHandle handle, const glm::vec2& position)
 {
     effects[handle.index].position = position;
 }
 
-void ParticleEngine::setRotation(ParticleHandle handle, float rotation)
+void ParticleEngine::setRotation(ParticleEffectHandle handle, float rotation)
 {
     effects[handle.index].rotation = rotation;
 }
 
-void ParticleEngine::setDepth(ParticleHandle handle, float depth)
+void ParticleEngine::setDepth(ParticleEffectHandle handle, float depth)
 {
     effects[handle.index].depth = depth;
 }
@@ -142,12 +167,7 @@ void ParticleEngine::update(float dt)
     simulate(dt);
 }
 
-inline float randBetween(float a, float b)
-{
-    float f = rand() / (float)RAND_MAX;
-    return a + (b - a) * f;
-}
-
+// The purpose of the prepass is to sort the emitters into thier separate venues
 void ParticleEngine::prepass()
 {
     TIME_BLOCK(Particle_Prepass);
@@ -160,16 +180,18 @@ void ParticleEngine::prepass()
 	if(effect)
 	{
 	    int finnishedEmitters = 0;
-	    for(int j = 0; j < effect->desc->count; ++j)
+	    for(uint32_t j = 0; j < effect->desc->count; ++j)
 	    {
 		ParticleEmitter* emitter = &emitters[effect->emitters[j].index];
 
+		// This is where emitter sorting is done
 		if(emitter->state != EmitterState::FINNISHED)
 		{
 		    emitter->position = effect->position;
 		    emitter->rotation = effect->rotation;
 		    emitter->depth = effect->depth;
 
+		    // This needs to be segregated 
 		    emittersInPlay[emittersInPlayCount++] = emitter;
 		}
 		else
@@ -178,11 +200,12 @@ void ParticleEngine::prepass()
 		}    
 	    }
 
+	    // If simulation is ended for all emitters
 	    if(finnishedEmitters == effect->desc->count)
 	    {
 		stop({(uint16_t)i});
 
-		for(int j = 0; j < effect->desc->count; ++j)
+		for(uint32_t j = 0; j < effect->desc->count; ++j)
 		{
 		    emitterHandles.free(effect->emitters[j].index);
 		}
@@ -193,14 +216,21 @@ void ParticleEngine::prepass()
     }
 }
 
+inline float randBetween(float a, float b)
+{
+    float f = rand() / (float)RAND_MAX;
+    return a + (b - a) * f;
+}
+
 void ParticleEngine::spawn(ParticleEmitter* emitter)
 {
-    for(int j = 0; j < emitter->emitter->particlesPerEmit; j++)
+    for(int32_t i = 0; i < emitter->desc->particlesPerEmit; i++)
     {
 	Particle p;
-	p.position = emitter->emitter->position;
-		
-	if(emitter->emitter->relative)
+	p.position = emitter->desc->position;
+
+	// Compute relative position
+	if(emitter->desc->relative)
 	{
 	    float angle = atan2(p.position.y, p.position.x);
 
@@ -213,44 +243,48 @@ void ParticleEngine::spawn(ParticleEmitter* emitter)
 	    p.position = emitter->position + npos;
 	}
 
-	glm::vec2 f = emitter->emitter->force;
-	float dangle = atan2(f.y, f.x);
+	glm::vec2 force = emitter->desc->force;
+	float forceAngle = atan2(force.y, force.x);
 		
-	float angle = glm::radians(emitter->emitter->spread);
+	float spreadAngle = glm::radians(emitter->desc->spread);
 
-	float rangle = (rand() / (float)RAND_MAX) * angle;
+	// Random between 0 and spread angle
+	float randomAngle = (rand() / (float)RAND_MAX) * spreadAngle;
 
-	if(emitter->emitter->relative)
+	// Compute relative rotation
+	if(emitter->desc->relative)
 	{
-	    f.x = cos(rangle + dangle -emitter->rotation);
-	    f.y = sin(rangle + dangle -emitter->rotation);
+	    force.x = cos(randomAngle + forceAngle - emitter->rotation);
+	    force.y = sin(randomAngle + forceAngle - emitter->rotation);
 	}
 	else
 	{
-	    f.x = cos(rangle + dangle);
-	    f.y = sin(rangle + dangle);
-	}
-	
+	    force.x = cos(randomAngle + forceAngle);
+	    force.y = sin(randomAngle + forceAngle);
+	}	
 
-	f *= glm::length(emitter->emitter->force);
-	    
-	p.acceleration = f;
+	force *= glm::length(emitter->desc->force);
+
+	// Particles assumed to have the same mass for now
+	p.acceleration = force;	
 	p.velocity = glm::vec2(0,0);
-	p.color.r = randBetween(emitter->emitter->colorMin.r, emitter->emitter->colorMax.r);
-	p.color.g = randBetween(emitter->emitter->colorMin.g, emitter->emitter->colorMax.g);
-	p.color.b = randBetween(emitter->emitter->colorMin.b, emitter->emitter->colorMax.b);
-	p.color.a = randBetween(emitter->emitter->colorMin.a, emitter->emitter->colorMax.a);
+	
+	p.color.r = randBetween(emitter->desc->colorMin.r, emitter->desc->colorMax.r);
+	p.color.g = randBetween(emitter->desc->colorMin.g, emitter->desc->colorMax.g);
+	p.color.b = randBetween(emitter->desc->colorMin.b, emitter->desc->colorMax.b);
+	p.color.a = randBetween(emitter->desc->colorMin.a, emitter->desc->colorMax.a);
 
-	float size = randBetween(emitter->emitter->sizeMin, emitter->emitter->sizeMax);
+	// Partilces assumed to be rectangular so only uniform scaling
+	float size = randBetween(emitter->desc->sizeMin, emitter->desc->sizeMax);
 	p.size = glm::vec2(size,size);
-
-	p.rotation = glm::radians(randBetween(emitter->emitter->rotationMin, emitter->emitter->rotationMax));
-		
-	p.lifetime = randBetween(emitter->emitter->lifetimeMin, emitter->emitter->lifetimeMax);
+	p.rotation = glm::radians(randBetween(emitter->desc->rotationMin, emitter->desc->rotationMax));
+	p.depth = randBetween(emitter->desc->depthMin, emitter->desc->depthMax);
+	
+	p.lifetime = randBetween(emitter->desc->lifetimeMin, emitter->desc->lifetimeMax);
+	p.texture = emitter->desc->texture;
 	p.time = 0;
-	p.texture = emitter->emitter->texture;
 
-	assert(emitter->active->used < emitter->active->size);
+	assert(emitter->active->used < emitter->active->size && "Particle Buffer Overflow!");
 	    
 	emitter->active->particles[emitter->active->used] = p;
 	emitter->active->used++;
@@ -260,9 +294,11 @@ void ParticleEngine::spawn(ParticleEmitter* emitter)
 void ParticleEngine::emit(float dt)
 {
     TIME_BLOCK(Particle_Emit);
-    
-    for(int i = 0; i < emittersInPlayCount; ++i)
+
+    // TODO: (daniel): Itterate _only_ on those emitters that _can_ spawn and _should_ spawn.
+    for(uint32_t i = 0; i < emittersInPlayCount; ++i)
     {
+	// TODO (daniel): Remove this state check
 	ParticleEmitter* emitter = emittersInPlay[i];
 	if(emitter->state == EmitterState::ENDING)
 	    continue;
@@ -270,13 +306,15 @@ void ParticleEngine::emit(float dt)
 	emitter->time += dt;
 	emitter->lifetime += dt;
 
-	if(emitter->emitter->lifetime != 0 && emitter->lifetime >= emitter->emitter->lifetime)
+	// Emitters lifetime is over (Transition from EMITTING to ENDING)
+	if(emitter->desc->lifetime != 0 && emitter->lifetime >= emitter->desc->lifetime)
 	{
 	    emitter->state = EmitterState::ENDING;
 	    continue;
 	}
 
-	if(emitter->emitter->spawnTime != 0 && emitter->time >= emitter->emitter->spawnTime)
+	// Should we spawn? If so then spawn
+	if(emitter->desc->spawnTime != 0 && emitter->time >= emitter->desc->spawnTime)
 	{
 	    spawn(emitter);
 	    
@@ -284,7 +322,8 @@ void ParticleEngine::emit(float dt)
 	}
     }
 
-    for(int i = 0; i < emittersInPlayCount; ++i)
+    // Transition from ENDING to FINNISHED
+    for(uint32_t i = 0; i < emittersInPlayCount; ++i)
     {
 	ParticleEmitter* emitter = emittersInPlay[i];
 	if(emitter->state == EmitterState::ENDING && emitter->active->used == 0)
@@ -298,11 +337,11 @@ void ParticleEngine::simulate(float dt)
 {
     TIME_BLOCK(Particle_Simulate);
     
-    for(int i = 0; i < emittersInPlayCount; ++i)
+    for(uint32_t i = 0; i < emittersInPlayCount; ++i)
     {
 	ParticleEmitter* emitter = emittersInPlay[i];
 
-	for (int j = 0; j < emitter->active->used; ++j)
+	for (uint32_t j = 0; j < emitter->active->used; ++j)
 	{
 	    Particle* p = &emitter->active->particles[j];
 
@@ -324,44 +363,60 @@ void ParticleEngine::render(int view)
 {
     TIME_BLOCK(Particle_Render);
     
-    for(int i = 0; i < emittersInPlayCount; ++i)
+    for(uint32_t i = 0; i < emittersInPlayCount; ++i)
     {
 	ParticleEmitter* emitter = emittersInPlay[i];
 	
-	for (int j = 0; j < emitter->second->used; ++j)
+	for (uint32_t j = 0; j < emitter->second->used; ++j)
 	{
 	    Particle* p = &emitter->second->particles[j];
 
-	    glm::vec4 c = p->color;
-	    
-	    if(p->lifetime != 0)
-		c += (emitter->emitter->endColor - p->color) * (p->time / p->lifetime);
+	    glm::vec4 color = p->color;
 
-	    glm::vec2 projectedXY = (1.0f / emitter->depth) * p->position;
-	    float scale = 1.0f / emitter->depth;
+	    // This is an argument for not using lifetime == 0 as infinite
+	    if(p->lifetime != 0)
+		color += (emitter->desc->endColor - p->color) * (p->time / p->lifetime);
+
+	    float depth = emitter->depth + p->depth;
+	    
+	    glm::vec2 projectedXY = (1.0f / depth) * p->position;
+	    float scale = 1.0f / depth;
+
+	    depth = glm::round(depth);
 	    
 	    sb->setTexture(p->texture->handle);
 	    sb->setDestination(glm::vec4(projectedXY.x,
 					 projectedXY.y,
-					 emitter->emitter->texture->width * p->size.x * scale,
-					 emitter->emitter->texture->height * p->size.y * scale));
+					 emitter->desc->texture->width * p->size.x * scale,
+					 emitter->desc->texture->height * p->size.y * scale));
 	    sb->setSource(glm::vec4(0,0,1,1));
 	    sb->setRotation(p->rotation);
 	    sb->setOrigin(glm::vec2(0.5, 0.5));
-	    sb->setColor(c);
-	    sb->setDepth(0.0f);
+	    sb->setColor(color);
+	    sb->setDepth(depth);
 	    sb->submit();
 	}
-
-	sb->draw(view);
     }
-
+    
     swap();
+}
+
+void ParticleEngine::debug(int view)
+{
+    for(uint32_t i = 0; i < emittersInPlayCount; ++i)
+    {
+	ParticleEmitter* emitter = emittersInPlay[i];
+
+	char out[100];
+	sprintf(out, "Emitter:%d Used:%d Size:%d\n", i, emitter->second->used, emitter->second->size);
+	
+        sb->write(out, glm::vec2(10, 50 + i * 20));
+    }
 }
 
 void ParticleEngine::swap()
 {
-    for(int i = 0; i < emittersInPlayCount; ++i)
+    for(uint32_t i = 0; i < emittersInPlayCount; ++i)
     {
 	ParticleEmitter* emitter = emittersInPlay[i];
 
