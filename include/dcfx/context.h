@@ -32,7 +32,6 @@ namespace dcfx
 	static void static_deallocate(void* _ptr, size_t);
     };
 
-    // TODO (daniel): Begin/End profile
     struct CallbackI
     {
 	virtual void profile(double ms) = 0;
@@ -68,6 +67,10 @@ namespace dcfx
 	CreateTexture,
 	DestroyTexture,
 	UpdateTexture,
+	ReadTexture,
+	GenerateMips,
+	CreateSampler,
+	DestroySampler,
 	CreateFramebuffer,
 	DestroyFramebuffer,
 	End
@@ -86,6 +89,7 @@ namespace dcfx
     struct ProgramHandle { uint16_t index; };
     struct UniformHandle { uint16_t index; };
     struct TextureHandle { uint16_t index; };
+    struct SamplerHandle { uint16_t index; };
     struct FramebufferHandle { uint16_t index; };
 
     template<class T>
@@ -108,7 +112,7 @@ namespace dcfx
 	uint32_t m_count;
     };
 
-    // Struct describing how to bind an image of a texture
+    // Struct describing how to bind a layer of a texture
     struct ImageBind
     {
 	enum class Access
@@ -131,17 +135,17 @@ namespace dcfx
 	Access m_access;
 	bool m_layered;
 	uint32_t m_layer;
-	uint32_t m_level;
+	uint32_t m_level;	
     };
 
 /*
   Sortkey layout:
-  Item Type (4bit) View (8bit) ProgramID (16bit) Unused (36bit)
+  View (8bit) Item Type (4bit) ProgramID (16bit) Unused (36bit)
 */
-#define SORTKEY_ITEM_MASK UINT64_C(0xF000000000000000)
-#define SORTKEY_ITEM_SHIFT 60
-#define SORTKEY_VIEW_MASK UINT64_C(0x0FF0000000000000)		
-#define SORTKEY_VIEW_SHIFT 52
+#define SORTKEY_VIEW_MASK UINT64_C(0xFF00000000000000)
+#define SORTKEY_VIEW_SHIFT 56
+#define SORTKEY_ITEM_MASK UINT64_C(0x00F0000000000000)		
+#define SORTKEY_ITEM_SHIFT 52
 #define SORTKEY_PROGRAM_MASK UINT64_C(0x000FFFF000000000)
 #define SORTKEY_PROGRAM_SHIFT 36
     
@@ -155,11 +159,19 @@ namespace dcfx
 		m_numY(0),
 		m_numZ(0),
 		m_imageCount(0),
-		m_bufferCount(0)
+		m_bufferCount(0),
+		m_textureCount(0)
 	    {
 		for(uint16_t i = 0; i < DCFX_MAX_COMPUTE_BUFFER_BINDINGS; i++)
 		{
 		    m_buffers[i] = { InvalidHandle };
+		}
+
+		for(uint16_t i = 0; i < DCFX_MAX_TEXTURE_SAMPLERS; i++)
+		{
+		    m_textures[i] = { InvalidHandle };
+		    m_samplers[i] = { InvalidHandle };
+		    m_samplerStates[i] = 0;
 		}
 	    }
 
@@ -175,6 +187,11 @@ namespace dcfx
 
 	BufferHandle m_buffers[DCFX_MAX_COMPUTE_BUFFER_BINDINGS];
 	uint16_t m_bufferCount;
+
+	TextureHandle m_textures[DCFX_MAX_TEXTURE_SAMPLERS];
+	SamplerHandle m_samplers[DCFX_MAX_TEXTURE_SAMPLERS];
+	uint32_t m_samplerStates[DCFX_MAX_TEXTURE_SAMPLERS];	
+	uint16_t m_textureCount;
     };
     
     struct DrawCall
@@ -195,10 +212,11 @@ namespace dcfx
 		m_numInstances(1),
 		m_instanceOffset(0),
 		m_instanceStride(0),
-		m_samplerCount(0)
+		m_textureCount(0)
 	    {
 		for(uint16_t i = 0; i < DCFX_MAX_TEXTURE_SAMPLERS; i++)
 		{
+		    m_textures[i] = { InvalidHandle };
 		    m_samplers[i] = { InvalidHandle };
 		    m_samplerStates[i] = 0;
 		}
@@ -220,9 +238,10 @@ namespace dcfx
 	BufferHandle m_indexBufferHandle;
 	BufferHandle m_instanceBufferHandle;
 
-	TextureHandle m_samplers[DCFX_MAX_TEXTURE_SAMPLERS];
-	uint32_t m_samplerStates[DCFX_MAX_TEXTURE_SAMPLERS];	
-	uint16_t m_samplerCount;
+	TextureHandle m_textures[DCFX_MAX_TEXTURE_SAMPLERS];
+	SamplerHandle m_samplers[DCFX_MAX_TEXTURE_SAMPLERS];
+	uint32_t m_samplerStates[DCFX_MAX_TEXTURE_SAMPLERS];
+	uint16_t m_textureCount;
     };
 
     struct RenderItem
@@ -230,7 +249,7 @@ namespace dcfx
 	ComputeCall m_compute;
 	DrawCall m_draw;
     };
-    
+
     struct Frame
     {
 	Frame()
@@ -240,10 +259,20 @@ namespace dcfx
 		m_freeBufferHandlesCount(0),
 		m_freeShaderHandlesCount(0),
 		m_freeProgramHandlesCount(0),
-		m_freeTetxureHandlesCount(0),
+		m_freeTextureHandlesCount(0),
+		m_freeSamplerHandlesCount(0),
 		m_freeFramebufferHandlesCount(0)
 	    {
-		
+		for(uint16_t i = 0; i < DCFX_MAX_VIEWS; i++)
+		{
+		    for(uint16_t j = 0; j < DCFX_MAX_TEXTURES_TO_MIP_PER_VIEW; ++j)
+		    {
+			m_texturesToMip[i][j].index = InvalidHandle;
+		    }
+
+		    m_texturesToMipCount[i] = 0;
+		    m_blitTargets[i].index = InvalidHandle;
+		}
 	    }
 
 	void initializeAllocator(void* mem, uint32_t size);
@@ -251,7 +280,7 @@ namespace dcfx
 	void start();
 	void finnish();
 
-	uint16_t submit(uint32_t view);
+	uint16_t submit(uint16_t view, uint32_t flag);
 	uint16_t dispatch(uint16_t view, ProgramHandle handle, uint16_t numX, uint16_t numY, uint16_t numZ);
 	void sort();
 
@@ -262,10 +291,11 @@ namespace dcfx
 	void setTransform(const glm::mat4& transform);
 	void setState(uint32_t state);
 	void setPrimitiveMode(uint32_t mode);
-	void setFramebuffer(uint8_t index, FramebufferHandle handle);
-	void setViewport(uint8_t index, const glm::ivec4& viewport); 
-	void setClearColor(uint8_t index, const glm::vec4& clearColor);
-	void setTexture(UniformHandle sampler, TextureHandle texture, uint32_t state);
+	void setFramebuffer(uint16_t index, FramebufferHandle handle);
+	void setViewport(uint16_t index, const glm::ivec4& viewport); 
+	void setClearColor(uint16_t index, const glm::vec4& clearColor);
+	void setTexture(UniformHandle uniform, TextureHandle texture, uint32_t state);
+	void setTexture(UniformHandle uniform, TextureHandle texture, SamplerHandle sampler);
 	void setImage(UniformHandle sampler, TextureHandle texture, ImageBind::Access access, uint8_t mip, bool layered, uint8_t layer);
 	void setBuffer(uint16_t binding, BufferHandle buffer);
 		
@@ -275,6 +305,7 @@ namespace dcfx
 	void free(ShaderHandle handle);
 	void free(ProgramHandle handle);
 	void free(TextureHandle handle);
+	void free(SamplerHandle handle);
 	void free(FramebufferHandle handle);
 
 	void clearFreeHandles();
@@ -284,6 +315,12 @@ namespace dcfx
 	CommandBuffer m_commands;
 	UniformBuffer m_uniforms;
 	MatrixCache m_transforms;
+
+	FramebufferHandle m_blitTargets[DCFX_MAX_VIEWS];
+	bool32 m_clear[DCFX_MAX_VIEWS]; // TODO: View flags..
+	
+	TextureHandle m_texturesToMip[DCFX_MAX_VIEWS][DCFX_MAX_TEXTURES_TO_MIP_PER_VIEW];
+	uint8_t m_texturesToMipCount[DCFX_MAX_VIEWS];
 	
 	FramebufferHandle m_framebuffers[DCFX_MAX_VIEWS];
 	glm::vec4 m_clearColor[DCFX_MAX_VIEWS];
@@ -304,7 +341,8 @@ namespace dcfx
 	uint16_t m_freeBufferHandlesCount;
 	uint16_t m_freeShaderHandlesCount;
 	uint16_t m_freeProgramHandlesCount;
-	uint16_t m_freeTetxureHandlesCount;
+	uint16_t m_freeTextureHandlesCount;
+	uint16_t m_freeSamplerHandlesCount;
 	uint16_t m_freeFramebufferHandlesCount;
 
 	UniformHandle m_freeUniformHandles[DCFX_MAX_UNIFORMS];
@@ -312,7 +350,8 @@ namespace dcfx
 	BufferHandle m_freeBufferHandles[DCFX_MAX_BUFFERS];
 	ShaderHandle m_freeShaderHandles[DCFX_MAX_SHADERS];
 	ProgramHandle m_freeProgramHandles[DCFX_MAX_PROGRAMS];
-	TextureHandle m_freeTetxureHandles[DCFX_MAX_TEXTURES];
+	TextureHandle m_freeTextureHandles[DCFX_MAX_TEXTURES];
+	SamplerHandle m_freeSamplerHandles[DCFX_MAX_SAMPLERS];
 	FramebufferHandle m_freeFramebufferHandles[DCFX_MAX_FRAMEBUFFERS];
     };
 
@@ -354,9 +393,8 @@ namespace dcfx
 	ShaderHandle m_compute;
     };
 
-    // TODO (daniel): Add WorldViewProjection predefined.
     static const char* s_predfinedUniformNames[] =
-    { "g_View", "g_InvView", "g_Proj", "g_InvProj", "g_Transform" };
+    { "g_View", "g_InvView", "g_Proj", "g_InvProj", "g_Transform", "g_ViewProjection" };
 
     enum class PredefinedUniformType
     {
@@ -365,6 +403,7 @@ namespace dcfx
 	PROJ,
 	INVPROJ,
 	TRANSFORM,
+	VIEWPROJ,
 	NONE
     };
 
@@ -395,10 +434,14 @@ namespace dcfx
 	virtual void deleteProgram(ProgramHandle handle) = 0;
 	virtual void createUniform(UniformHandle handle, const char* name, UniformType type, uint8_t num) = 0;
 	virtual void deleteUniform(UniformHandle handle) = 0;
-	virtual void createTexture(TextureHandle handle, uint32_t width, uint32_t height, uint32_t depth, TextureFormat format, uint32_t count) = 0;
+	virtual void createTexture(TextureHandle handle, uint32_t width, uint32_t height, uint32_t depth, TextureFormat format, uint32_t count, uint8_t mips, uint8_t samples) = 0;
 	virtual void createTexture(TextureHandle handle, void* mem, size_t size, ImageInfo& info) = 0;
 	virtual void deleteTexture(TextureHandle handle) = 0;
 	virtual void updateTexture(TextureHandle handle, void* mem) = 0;
+	virtual void readTexture(TextureHandle handle, void* mem) = 0;
+	virtual void generateMips(TextureHandle handle) = 0;
+	virtual void createSampler(SamplerHandle handle, uint32_t flags, uint8_t anisotrophic) = 0;
+	virtual void deleteSampler(SamplerHandle handle) = 0;
 	virtual void createFramebuffer(FramebufferHandle handle, TextureHandle* texHandles, uint32_t num, uint32_t index) = 0;
 	virtual void deleteFramebuffer(FramebufferHandle handle) = 0;
     };
@@ -419,8 +462,8 @@ namespace dcfx
 	DCFX_API uint64_t frame();
 			
 	// Resource creation
-	DCFX_API BufferHandle createVertexBuffer(void* mem, size_t size, const VertexDecl& decl);
-	DCFX_API BufferHandle createBuffer(void* mem, size_t size, BufferType type);
+	DCFX_API BufferHandle createVertexBuffer(void* mem, size_t size, const VertexDecl& decl); // TODO: Pass in stride
+	DCFX_API BufferHandle createBuffer(void* mem, size_t size, BufferType type); // TODO: Pass in stride
 	DCFX_API void deleteBuffer(BufferHandle handle);
 	DCFX_API void updateBuffer(BufferHandle handle, size_t offset, size_t size, void* mem);
 	DCFX_API void readBuffer(BufferHandle handle, size_t offset, size_t size, void* mem);
@@ -430,36 +473,34 @@ namespace dcfx
 	DCFX_API void deleteProgram(ProgramHandle handle);
 	DCFX_API UniformHandle createUniform(const char* name, UniformType type, uint8_t num);
 	DCFX_API void deleteUniform(UniformHandle handle);
-
-	// TODO (daniel): Send a initial state with the texture also add additional data such as anistrophic level etc
-	DCFX_API TextureHandle createTexture(uint32_t width, uint32_t height, uint32_t depth, TextureFormat format);
-	DCFX_API TextureHandle createTexture(uint32_t width, uint32_t height, TextureFormat format, uint32_t count = 1);
-	DCFX_API TextureHandle createTexture(void* mem, size_t size, ImageInfo& info);
-	
+	DCFX_API TextureHandle createTexture(uint32_t width, uint32_t height, TextureFormat format, uint32_t depth = 1, uint32_t count = 1, uint8_t mips = 1, uint8_t samples = 1);
+	DCFX_API TextureHandle createTexture(void* mem, size_t size, ImageInfo& info);	
 	DCFX_API void deleteTexture(TextureHandle handle);
 	DCFX_API void updateTexture(TextureHandle handle, void* mem);
+	DCFX_API void readTexture(TextureHandle handle, void* mem);
+	DCFX_API void generateMips(TextureHandle handle);
+	DCFX_API void generateMips(TextureHandle handle, uint16_t view);
+	DCFX_API SamplerHandle createSampler(uint32_t state, uint8_t anisotrophic = 0);
+	DCFX_API void deleteSampler(SamplerHandle handle);
 	DCFX_API FramebufferHandle createFramebuffer(TextureHandle* handles, uint32_t num, uint32_t index = 0);
-	DCFX_API void deleteFramebuffer(FramebufferHandle handle);
-			
+	DCFX_API void deleteFramebuffer(FramebufferHandle handle);			
 	DCFX_API void setUniform(UniformHandle handle, const void* mem, size_t size);
-	DCFX_API void setTexture(UniformHandle sampler, TextureHandle texture, uint32_t state = 0);
+	DCFX_API void setTexture(UniformHandle uniform, TextureHandle texture, uint32_t state);
+	DCFX_API void setTexture(UniformHandle uniform, TextureHandle texture, SamplerHandle sampler);	
 	DCFX_API void setImage(UniformHandle sampler, TextureHandle texture, ImageBind::Access access = ImageBind::Access::READWRITE, uint8_t mip = 0, bool layered = false, uint8_t layer = 0);
-	DCFX_API void setBuffer(uint16_t binding, BufferHandle buffer);
-	
-	DCFX_API void setFramebuffer(uint8_t index, FramebufferHandle framebuffer);
-	DCFX_API void setViewport(uint8_t index, const glm::ivec4& viewport);
-	DCFX_API void setClearColor(uint8_t index, const glm::vec4& clearColor);
-		
-	// Primitive submission
+	DCFX_API void setBuffer(uint16_t binding, BufferHandle buffer);	
+	DCFX_API void setFramebuffer(uint16_t index, FramebufferHandle framebuffer);
+	DCFX_API void setViewport(uint16_t index, const glm::ivec4& viewport);
+	DCFX_API void setClearColor(uint16_t index, const glm::vec4& clearColor);
 	DCFX_API void setVertexBuffer(BufferHandle handle, uint32_t baseVertex = 0, uint32_t count = 0);
-	DCFX_API void setIndexBuffer(BufferHandle handle, uint32_t indexOffset, uint32_t count);
-	DCFX_API void setInstanceBuffer(BufferHandle handle, uint32_t numInstances, uint16_t stride, uint32_t offset = 0);
-	
+	DCFX_API void setIndexBuffer(BufferHandle handle, uint32_t indexOffset = 0, uint32_t count = 0);
+	DCFX_API void setInstanceBuffer(BufferHandle handle, uint32_t numInstances, uint16_t stride, uint32_t offset = 0);	
 	DCFX_API void setProgram(ProgramHandle handle);
 	DCFX_API void setTransform(const glm::mat4& transform);
 	DCFX_API void setState(uint32_t state);
 	DCFX_API void setPrimitiveMode(uint32_t mode);
-	DCFX_API void submit(uint16_t view);
+	DCFX_API void blitFramebuffer(uint16_t view, FramebufferHandle from, FramebufferHandle to);
+	DCFX_API void submit(uint16_t view, uint32_t flag = 1);
 	DCFX_API void dispatch(uint16_t view, ProgramHandle handle, uint16_t numX, uint16_t numY, uint16_t numZ); 
 
 	DCFX_API bool isInited() { return m_renderInited; }
@@ -503,9 +544,11 @@ namespace dcfx
 	dcutil::HandleAllocator<DCFX_MAX_SHADERS> m_shaderHandles;
 	dcutil::HandleAllocator<DCFX_MAX_PROGRAMS> m_programHandles;
 	dcutil::HandleAllocator<DCFX_MAX_TEXTURES> m_textureHandles;
+	dcutil::HandleAllocator<DCFX_MAX_SAMPLERS> m_samplerHandles;
 	dcutil::HandleAllocator<DCFX_MAX_FRAMEBUFFERS> m_framebufferHandles;
 
 	typedef tinystl::unordered_map<uint32_t, VertexDeclHandle> VertexDeclMap;
 	VertexDeclMap* m_vertexDeclMap;
     };
 }
+

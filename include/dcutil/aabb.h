@@ -1,6 +1,7 @@
 #pragma once
 
 #include "dcutil_helper.h"
+#define GLM_SWIZZLE
 #include <glm/glm.hpp>
 #include <cstdlib>
 

@@ -188,12 +188,11 @@ int main(int argv, char** argc)
     {    
 	mspace appSpace = create_mspace_with_base(gameMemory.permanentStorage, VOIDSTORM_APPLICATION_HEAP_SIZE, 0);
 	mspace renderSpace = create_mspace_with_base((uint8_t*)gameMemory.permanentStorage + VOIDSTORM_APPLICATION_HEAP_SIZE, VOIDSTORM_RENDER_HEAP_SIZE, 0);
-	
+
 	HeapAllocator globalAllocator(appSpace);
 	g_allocator = &globalAllocator;
 
 	uint8_t* permStackPtr = (uint8_t*)gameMemory.permanentStorage + VOIDSTORM_APPLICATION_HEAP_SIZE + VOIDSTORM_RENDER_HEAP_SIZE;	
-
 	dcutil::StackAllocator* permanentStack = new(permStackPtr) dcutil::StackAllocator(
 	    permStackPtr + sizeof(dcutil::StackAllocator),
 	    VOIDSTORM_APPLICATION_PERMANENT_STACK_SIZE);

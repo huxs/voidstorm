@@ -5,8 +5,12 @@
 #include <dxgi1_4.h>
 #include <d3dcompiler.h>
 
-// NOTE(daniel): This is for UpdateSubresources
+// NOTE (daniel): This is for UpdateSubresources
 #include <d3dx12.h>
+
+/* TODO:
+   
+*/
 
 namespace dcfx
 {
@@ -58,14 +62,11 @@ namespace dcfx
 
     struct D3D12Texture
     {
-//	void create(uint32_t width, uint32_t height, uint32_t depth, TextureFormat format);
-//	void create(uint32_t width, uint32_t height, TextureFormat format);
 	void create(ImageInfo& info, void* data, size_t size);
 	void destroy();
-//	void update(void* mem);
 
 	ID3D12Resource* m_texture;
-	//TODO: Identifer for a texture.
+	D3D12_SHADER_RESOURCE_VIEW_DESC m_srvDesc;
     };
     
     struct D3D12RenderContext : public RenderContextI
@@ -90,11 +91,15 @@ namespace dcfx
 	void deleteProgram(ProgramHandle handle);
 	void createUniform(UniformHandle handle, const char* name, UniformType type, uint8_t num);
 	void deleteUniform(UniformHandle handle);
-	void createTexture(TextureHandle handle, uint32_t width, uint32_t height, uint32_t depth, TextureFormat format);
+	void createTexture(TextureHandle handle, uint32_t width, uint32_t height, uint32_t depth, TextureFormat format, uint32_t count, uint32_t mips);
 	void createTexture(TextureHandle handle, void* mem, size_t size, ImageInfo& info);
 	void deleteTexture(TextureHandle handle);
 	void updateTexture(TextureHandle handle, void* mem);
-	void createFramebuffer(FramebufferHandle handle, TextureHandle* texHandles, uint32_t num);
+	void readTexture(TextureHandle handle, void* mem);
+	void generateMips(TextureHandle handle);
+	void createSampler(SamplerHandle handle, uint32_t flags, uint8_t anisotrophic);
+	void deleteSampler(SamplerHandle handle);
+	void createFramebuffer(FramebufferHandle handle, TextureHandle* texHandles, uint32_t num, uint32_t index);
 	void deleteFramebuffer(FramebufferHandle handle);
 
 	void updateUniformData(UniformBuffer& buffer, size_t begin, size_t end);
@@ -104,7 +109,7 @@ namespace dcfx
 	ID3D12CommandQueue* m_commandQueue;
 	IDXGISwapChain3* m_swapChain;
 	ID3D12DescriptorHeap* m_rtvHeap;
-	ID3D12DescriptorHeap* m_cbvHeap;
+	ID3D12DescriptorHeap* m_cbvHeap; // m_cbvSrvHeap;
 	UINT m_rtvDescriptorSize;
 	UINT m_cbvSrvDescriptorSize;
 	ID3D12Resource* m_renderTargets[2];
@@ -114,7 +119,7 @@ namespace dcfx
 	ID3D12CommandSignature* m_commandSignature;
 
 	ID3D12Resource* m_commandBuffer;
-	void* m_commandData;
+	void* m_commandData; // mapped ptr to commands buffer; // m_commandsBufferPtr;
 	
 	uint16_t m_backbufferIndex;
 	HANDLE m_event;
@@ -134,8 +139,6 @@ namespace dcfx
 
 	D3D12Batch m_batch;
 
-	// TODO: Use the id instead to find a hole in the heap!
-	UINT m_textureOffset;
-	
+	UINT m_textureOffset;	
     };
 }

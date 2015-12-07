@@ -6,14 +6,10 @@ static SpriteFont loadFont(dcfx::Context* renderCtx, const char* filepath)
 {
     SpriteFont font;
 
-#ifndef ANDROID
     tinystl::string assets(VOIDSTORM_FONT_DIRECTORY);
     tinystl::string file(filepath);
     assets.append(file.c_str(), file.c_str() + file.size());
-    PRINT("%s\n", assets.c_str());
-#else
-    tinystl::string assets(filepath);
-#endif    
+    PRINT("%s\n", assets.c_str());  
     
     SDL_RWops* handle = SDL_RWFromFile(assets.c_str(), "rb");
     if (handle == nullptr)
@@ -22,12 +18,12 @@ static SpriteFont loadFont(dcfx::Context* renderCtx, const char* filepath)
 	return font;
     }
 
-    // Get the size of the file in bytes.
+    // Get the size of the file in bytes
     SDL_RWseek(handle, 0, SEEK_END);
     size_t size = (unsigned int)SDL_RWtell(handle);
     SDL_RWseek(handle, 0, SEEK_SET);
 
-    // Allocate space for storing the content of the file.
+    // Allocate space for storing the content of the file
     char* mem = (char*)renderCtx->frameAlloc(sizeof(char) * size);
 
     size_t bytes = SDL_RWread(handle, mem, size, 1);
@@ -39,7 +35,7 @@ static SpriteFont loadFont(dcfx::Context* renderCtx, const char* filepath)
 	
     dcutil::MemoryReader reader(mem, size);
 
-    // Validate file header.
+    // Validate file header
     static const char valid[] = "DXTKfont";
 
     for(int i = 0; i < ARRAYSIZE(valid)-1; ++i)
@@ -92,30 +88,21 @@ SpriteBatch::SpriteBatch(dcfx::Context* _renderCtx)
 	spriteQueueCount(0)
 {
 
-    defaultFont = loadFont(renderCtx, "arial.spritefont");
-
-    colorSampler = renderCtx->createUniform("g_colorMap", dcfx::UniformType::SAMPLER, 1);
+    this->defaultFont = loadFont(renderCtx, "arial.spritefont");
+    this->colorSampler = renderCtx->createUniform("g_colorMap", dcfx::UniformType::SAMPLER, 1);
 	
     dcfx::ProgramDesc desc;
     desc.m_vert = loadShader(renderCtx, "sprite.vert", dcfx::ShaderType::VERTEX);
     desc.m_frag = loadShader(renderCtx, "sprite.frag", dcfx::ShaderType::FRAGMENT);
     defaultProgram = renderCtx->createProgram(desc);
 
-#ifdef ANDROID
-    vertexDecl.begin();
-    vertexDecl.add(0, 4, dcfx::AttributeType::FLOAT, false);
-    vertexDecl.add(1, 3, dcfx::AttributeType::FLOAT, false);
-    vertexDecl.add(2, 2, dcfx::AttributeType::FLOAT, false);
-    vertexDecl.end();
-#else
     vertexDecl.begin();
     vertexDecl.add(0, 3, dcfx::AttributeType::FLOAT, false);
     vertexDecl.add(1, 2, dcfx::AttributeType::FLOAT, false);
     vertexDecl.add(2, 4, dcfx::AttributeType::FLOAT, false);
     vertexDecl.end();
-#endif    
-    
-    vertexBuffer = renderCtx->createVertexBuffer(
+
+    this->vertexBuffer = renderCtx->createVertexBuffer(
 	nullptr,
 	SpriteBatch::MaxSprites * SpriteBatch::VerticesPerSprite * sizeof(SpriteVertex),
 	vertexDecl);
@@ -136,7 +123,7 @@ SpriteBatch::SpriteBatch(dcfx::Context* _renderCtx)
 	indices[index+5] = vertex;
     }
 	
-    indexBuffer = renderCtx->createBuffer(
+    this->indexBuffer = renderCtx->createBuffer(
 	&indices[0],
 	SpriteBatch::MaxSprites * SpriteBatch::IndicesPerSprite * sizeof(uint32_t),
 	dcfx::BufferType::INDEX);
@@ -202,9 +189,9 @@ void SpriteBatch::write(const char* text, const glm::vec2& position)
 
 void SpriteBatch::submit()
 {
-    if(spriteQueueCount >= SpriteBatch::QueueSize - 1)
+    if(spriteQueueCount >= QueueSize - 1)
     {
-	//printf("SpriteQueue full %d\n", SpriteBatch::QueueSize);	
+	//PRINT("SpriteQueue full %d\n", SpriteBatch::QueueSize);	
 	return;
     }
 	
@@ -328,7 +315,7 @@ void SpriteBatch::bufferSprite(SpriteInfo* spriteInfo, SpriteVertex* data, int i
 	    glm::vec4(1.0f, 0.0f, 1.0f, 0.0f),
 	    glm::vec4(1.0f, 1.0f, 1.0f, 1.0f),
 	    glm::vec4(0.0f, 1.0f, 0.0f, 1.0f)
-	};
+ 	};
 
     float rotation = spriteInfo->originRotationDepth.z;
 	

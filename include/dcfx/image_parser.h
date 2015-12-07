@@ -45,11 +45,18 @@ namespace dcfx
 	RG16F,
 	RG32F,
 	R32F,
-	D32F
+	D32F,
+	D32FS8,
+	D24S8
     };
 
     struct ImageInfo
     {
+	ImageInfo()
+		:
+		m_isSRGB(true)
+	    {}
+	
 	uint32_t m_width;
 	uint32_t m_height;
 	uint32_t m_pitch;
@@ -59,6 +66,7 @@ namespace dcfx
 	uint32_t m_depth;
 	bool m_isCompressed;
 	bool m_isCubeMap;
+	bool m_isSRGB;
     };
 
     struct TranslateDDSFormat

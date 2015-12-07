@@ -13,9 +13,9 @@ struct Vertex1P1UV
 
 Renderer::Renderer(HeapAllocator* heap, dcutil::StackAllocator* perm, dcutil::StackAllocator* world)
 {
-    resolution.x = 1280;
-    resolution.y = 720;
-    isFullscreen = false;
+    this->resolution.x = 1280;
+    this->resolution.y = 720;
+    this->isFullscreen = false;
 
     Uint32 createWindowFlags = SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE;
     window = SDL_CreateWindow("Voidstorm",
@@ -33,17 +33,17 @@ Renderer::Renderer(HeapAllocator* heap, dcutil::StackAllocator* perm, dcutil::St
     
     SDL_GetWindowSize(window, &resolution.x, &resolution.y);
 
-	aspectRatio = (float)resolution.y / resolution.x;
+    this->aspectRatio = (float)resolution.y / resolution.x;
 
     SDL_SysWMinfo info;
     SDL_VERSION(&info.version);
     SDL_GetWindowWMInfo(window, &info);
     HWND hwnd = info.info.win.window;
     
-    renderCtx = new(perm->alloc(sizeof(dcfx::Context))) dcfx::Context(hwnd, heap);
-    spritebatch = new(perm->alloc(sizeof(SpriteBatch)))  SpriteBatch(renderCtx);
-    linerenderer = new(perm->alloc(sizeof(LineRenderer)))  LineRenderer(renderCtx);
-    particle = new(perm->alloc(sizeof(ParticleEngine))) ParticleEngine(world, renderCtx, spritebatch);
+    this->renderCtx = new(perm->alloc(sizeof(dcfx::Context))) dcfx::Context(hwnd, heap);
+    this->spritebatch = new(perm->alloc(sizeof(SpriteBatch)))  SpriteBatch(renderCtx);
+    this->linerenderer = new(perm->alloc(sizeof(LineRenderer)))  LineRenderer(renderCtx);
+    this->particle = new(perm->alloc(sizeof(ParticleEngine))) ParticleEngine(world, renderCtx, spritebatch);
     
     Vertex1P1UV* verts = (Vertex1P1UV*)renderCtx->frameAlloc(4 * sizeof(Vertex1P1UV));
     verts[0].pos = glm::vec3(-1.0f, -1.0f, 0.0f);
@@ -70,33 +70,33 @@ Renderer::Renderer(HeapAllocator* heap, dcutil::StackAllocator* perm, dcutil::St
     decl.add(1, 2, dcfx::AttributeType::FLOAT, false);
     decl.end();
 
-    fsqVertexBuffer = renderCtx->createVertexBuffer(&verts[0], 4 * sizeof(Vertex1P1UV), decl);
-    fsqIndexBuffer = renderCtx->createBuffer(&indices[0], 6 * sizeof(uint32_t), dcfx::BufferType::INDEX);
+    this->fsqVertexBuffer = renderCtx->createVertexBuffer(&verts[0], 4 * sizeof(Vertex1P1UV), decl);
+    this->fsqIndexBuffer = renderCtx->createBuffer(&indices[0], 6 * sizeof(uint32_t), dcfx::BufferType::INDEX);
 
     createFramebuffers();
    
-    colorSampler = renderCtx->createUniform("Scene", dcfx::UniformType::SAMPLER, 1);
-    sigmaUniform = renderCtx->createUniform("Sigma", dcfx::UniformType::FLOAT, 1);
-    tapSizeUniform = renderCtx->createUniform("TapSize", dcfx::UniformType::FLOAT, 1);
-    exposureUniform = renderCtx->createUniform("Exposure", dcfx::UniformType::FLOAT, 1);
+    this->colorSampler = renderCtx->createUniform("Scene", dcfx::UniformType::SAMPLER, 1);
+    this->sigmaUniform = renderCtx->createUniform("Sigma", dcfx::UniformType::FLOAT, 1);
+    this->tapSizeUniform = renderCtx->createUniform("TapSize", dcfx::UniformType::FLOAT, 1);
+    this->exposureUniform = renderCtx->createUniform("Exposure", dcfx::UniformType::FLOAT, 1);
 
     // TODO (daniel): Use a resource manager for shaders so we don't have to load the same once over again..
     dcfx::ProgramDesc desc;
     desc.m_vert = loadShader(renderCtx, "fullscreenquad.vert", dcfx::ShaderType::VERTEX);
     desc.m_frag = loadShader(renderCtx, "blur_vertical.frag", dcfx::ShaderType::FRAGMENT);
-    blurVerticalProgram = renderCtx->createProgram(desc);
+    this->blurVerticalProgram = renderCtx->createProgram(desc);
 
     desc.m_vert = loadShader(renderCtx, "fullscreenquad.vert", dcfx::ShaderType::VERTEX);
     desc.m_frag = loadShader(renderCtx, "blur_horizontal.frag", dcfx::ShaderType::FRAGMENT);
-    blurHorizontalProgram = renderCtx->createProgram(desc);
+    this->blurHorizontalProgram = renderCtx->createProgram(desc);
 
     desc.m_vert = loadShader(renderCtx, "fullscreenquad.vert", dcfx::ShaderType::VERTEX);
     desc.m_frag = loadShader(renderCtx, "exposure.frag", dcfx::ShaderType::FRAGMENT);
-    exposureProgram = renderCtx->createProgram(desc);
+    this->exposureProgram = renderCtx->createProgram(desc);
 
     desc.m_vert = loadShader(renderCtx, "fullscreenquad.vert", dcfx::ShaderType::VERTEX);
     desc.m_frag = loadShader(renderCtx, "fullscreenquad.frag", dcfx::ShaderType::FRAGMENT);
-    outputProgram = renderCtx->createProgram(desc);
+    this->outputProgram = renderCtx->createProgram(desc);
 
     defaultValues();
 }
@@ -128,16 +128,11 @@ Renderer::~Renderer()
 
 void Renderer::setResolution(glm::ivec2 resolution)
 {
-#ifndef ANDROID    
     this->resolution = resolution;
-
-    // TODO (daniel): This is a slow way of resizing the framebuffers.
-    deleteFramebuffers();
-    createFramebuffers();
-
-    aspectRatio = (float)resolution.y / resolution.x;
+    this->aspectRatio = (float)resolution.y / resolution.x;
     
-#endif    
+    deleteFramebuffers();
+    createFramebuffers();   
 }
 
 glm::ivec2 Renderer::getResolution()
@@ -310,7 +305,6 @@ void Renderer::render(World* world)
 
     //Render debug information such as lines, graphs etc
     linerenderer->dispatch(RENDERPASS_DEBUG);
-
 }
 
 void Renderer::frame()

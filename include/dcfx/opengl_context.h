@@ -5,10 +5,11 @@
 
 /* TODO:
    Implement 1D textures.
-   Implement support for geometry/tesselation.
-   Implement stenciling.
-   Implement support for alpha testing.
-   Scissor test.   
+   Implement support for geometry/tesselation shaders.
+   Implement stencil state.
+   Implement scissor testing.
+   Implement allocation fot multisampled framebuffers.
+   Implement api for modifying coverage? (alpha-to-coverage etc.)
 */
 
 #ifdef WINDOWS
@@ -33,6 +34,13 @@ namespace dcfx
     static const GLenum s_typeMap[] = { GL_FLOAT, GL_SHORT, GL_INT, GL_BYTE };
 
     static const GLenum s_textureFormatMap[] =
+    {
+	GL_COMPRESSED_RGBA_S3TC_DXT1_EXT,
+	GL_COMPRESSED_RGBA_S3TC_DXT3_EXT,
+	GL_COMPRESSED_RGBA_S3TC_DXT5_EXT
+    };
+
+    static const GLenum s_sRGBTextureFormatMap[] =
     {
 	GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT1_EXT,
 	GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT3_EXT,
@@ -86,34 +94,44 @@ namespace dcfx
     {
 	void setFormat(TextureFormat format);
 	
-	void create(uint32_t width, uint32_t height, uint32_t depth, TextureFormat format);
-	void createArray(uint32_t width, uint32_t height, TextureFormat format, uint32_t count);
-	void create(uint32_t width, uint32_t height, TextureFormat format);
+	void create(uint32_t width, uint32_t height, uint32_t depth, TextureFormat format, uint32_t mips);
+	void createArray(uint32_t width, uint32_t height, TextureFormat format, uint32_t count, uint32_t mips);
+	void create(uint32_t width, uint32_t height, TextureFormat format, uint32_t mips);
+	void createMS(uint32_t width, uint32_t height, TextureFormat format, uint8_t samples);
 	void create(ImageInfo& info, void* data, size_t size);
 	void destroy();
 	void update(void* mem);
+	void read(void* mem);
+	void generateMips();
 
 	GLuint m_handle;
-	GLenum m_target;
-	
+	GLenum m_target; 
 	GLenum m_type; // Texel Type
 	GLenum m_format; // Texel Format
 	GLenum m_internal; // GL Storage format
 	
 	glm::ivec3 m_size;
-        
+	uint32_t m_flags;
+    };
+
+    struct GLSampler
+    {
+	void create(uint32_t flags, uint8_t anisotrophic);
+	void destroy();
+
+	void setState(uint32_t flags, uint8_t anisotrophic);
+
+	GLuint m_handle;
+	uint32_t m_flags;
+	uint8_t m_anisotrophic;
 /*
-  TODO (daniel):
-  Anistrophic level
   Base mip level
   Max mip level
   Comp value
   Border color
 */
-
-	uint32_t m_flags;
     };
-
+    
     struct GLFramebuffer
     {
 	void create(GLTexture* textures, TextureHandle* handles, uint32_t num, uint32_t index);
@@ -128,6 +146,11 @@ namespace dcfx
 	~GLRenderContext();
 	void flip();
 	void render(Frame* frame);
+
+	void blitFramebuffer(FramebufferHandle handle);	
+	void updateUniforms(UniformBuffer& buffer, size_t begin, size_t end);
+	void commitPredinedUniforms(GLProgram* program, Frame* frame, uint16_t view);
+	void commit(ProgramBuffer& buffer);
 			
 	void createVertexDecl(VertexDeclHandle handle, const VertexDecl& decl);
 	void deleteVertexDecl(VertexDeclHandle handle);
@@ -142,19 +165,21 @@ namespace dcfx
 	void deleteProgram(ProgramHandle handle);
 	void createUniform(UniformHandle handle, const char* name, UniformType type, uint8_t num);
 	void deleteUniform(UniformHandle handle);
-	void createTexture(TextureHandle handle, uint32_t width, uint32_t height, uint32_t depth, TextureFormat format, uint32_t count);
+	void createTexture(TextureHandle handle, uint32_t width, uint32_t height, uint32_t depth, TextureFormat format, uint32_t count, uint8_t mips, uint8_t samples);
 	void createTexture(TextureHandle handle, void* mem, size_t size, ImageInfo& info);
 	void deleteTexture(TextureHandle handle);
 	void updateTexture(TextureHandle handle, void* mem);
+	void readTexture(TextureHandle handle, void* mem);
+	void generateMips(TextureHandle handle);
+	void createSampler(SamplerHandle handle, uint32_t flags, uint8_t anisotrophic);
+	void deleteSampler(SamplerHandle handle);
 	void createFramebuffer(FramebufferHandle handle, TextureHandle* texHandles, uint32_t num, uint32_t index);
 	void deleteFramebuffer(FramebufferHandle handle);
 
-	void updateUniforms(UniformBuffer& buffer, size_t begin, size_t end);
-	void commit(ProgramBuffer& buffer);
-
 	GLContext m_context;	
 	GLuint m_timeElapsed;
-
+	uint32_t m_activeState;
+	
 	void* m_unifomData[DCFX_MAX_UNIFORMS];
 	tinystl::unordered_map<uint32_t, UniformDesc> m_uniformDesc;
 
@@ -165,6 +190,7 @@ namespace dcfx
 	tinystl::unordered_map<uint16_t, VertexDeclHandle> m_bufferToDecls;
 
 	GLTexture m_textures[DCFX_MAX_TEXTURES];
+	GLSampler m_samplers[DCFX_MAX_SAMPLERS];
 	GLFramebuffer m_framebuffers[DCFX_MAX_FRAMEBUFFERS];
     };
 }
