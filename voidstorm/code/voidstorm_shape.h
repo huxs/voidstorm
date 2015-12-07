@@ -10,29 +10,6 @@ enum ShapeType
     NONE
 };
 
-struct ContactResult
-{
-    ContactResult()
-	    : hit(false){}
-    
-    bool hit;
-    glm::vec2 normal;
-    glm::vec2 position;
-    
-    float r;
-};
-
-typedef ContactResult CONTACT_CALLBACK(World* world,
-				       glm::vec2 deltaVel,
-				       TransformManager::Instance transformA,
-				       CollisionManager::ShapeData shapeA,
-				       TransformManager::Instance transformB,
-				       CollisionManager::ShapeData shapeB);
-
-extern CONTACT_CALLBACK* g_contactCallbacks[ShapeType::NONE][ShapeType::NONE];
-
-void setupContactCallbacks();
-
 struct PolygonShape
 {
     glm::vec2 computeCentroid();
@@ -52,4 +29,3 @@ struct CircleShape
 {
     float radius;
 };
-

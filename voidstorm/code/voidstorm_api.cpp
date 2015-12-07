@@ -752,18 +752,11 @@ namespace api
 	VoidstormContext* context = getContext(luaState);
 	Entity entity = { (uint32_t)lua_tointeger(luaState, 1) };
 
-	CollisionManager::Instance instance = context->world->collisions.lookup(entity);
-	if(instance.index != 0)
-	{
-	    DbvtNode* node = context->world->collisions.getNode(instance);	    
-	    context->physics->getTree()->destroyProxy(node);	    
-	    context->world->collisions.destroy(instance);
-	}
-	
 	context->world->transforms.destroy(context->world->transforms.lookup(entity));
 	context->world->physics.destroy(context->world->physics.lookup(entity));
 	context->world->sprites.destroy(context->world->sprites.lookup(entity));
 	context->world->responders.destroy(context->world->responders.lookup(entity));
+	context->world->collisions.destroy(context->world->collisions.lookup(entity));
 	context->world->entities.destroy(entity);
 
 	return 0;
@@ -840,25 +833,10 @@ namespace api
 	CollisionManager::Instance instance = context->world->collisions.lookup(entity);
 	if(instance.index != 0)
 	{
-	    CircleShape* circle = context->world->collisions.createCircleShape(instance);
-	    circle->radius = radius;
-
-	    // Build AABB that covers the collision shape.
 	    TransformManager::Instance tinstance = context->world->transforms.lookup(entity);
 	    glm::vec2 position = context->world->transforms.getPosition(tinstance);
 	    
-	    AABB aabb;
-	    aabb.lower = glm::vec2(position.x - radius, position.y - radius);
-	    aabb.upper = glm::vec2(position.x + radius, position.y + radius);
-
-	    // Create proxy and isert into the tree.
-	    DbvtNode* node = context->physics->getTree()->createProxy(entity, aabb);
-
-	    Contact contacts[1024];
-	    int contactsFound = context->physics->getTree()->query(node, contacts);
-	    context->world->collisions.addContacts(instance, contacts, contactsFound);	    
-
-	    context->world->collisions.setNode(instance, node);
+	    context->world->collisions.createCircleShape(instance, radius, position);
 	}
 
 	return 0;
@@ -879,19 +857,7 @@ namespace api
 	CollisionManager::Instance instance = context->world->collisions.lookup(entity);
 	if(instance.index != 0)
 	{
-	    PolygonShape* s = context->world->collisions.createPolygonShape(instance);
-	    s->set(&vertices[0], count);
-
-	    AABB aabb = s->computeAABB();
-
-	    // Create proxy and isert into the tree.
-	    DbvtNode* node = context->physics->getTree()->createProxy(entity, aabb);
-
-	    Contact contacts[1024];
-	    int contactsFound = context->physics->getTree()->query(node, contacts);
-	    context->world->collisions.addContacts(instance, contacts, contactsFound);   
-
-	    context->world->collisions.setNode(instance, node);
+	    context->world->collisions.createPolygonShape(instance, vertices, count);
 	}
 
 	return 0;
@@ -1002,7 +968,6 @@ namespace api
 	CollisionManager::Instance collisionInstance = context->world->collisions.lookup(e);
 
 	/* NOTE (daniel): When moving entities directly we cannot rely on the physics system to move the collision box, so we do it ourself here. */
-	// TODO (daniel): Nicer instance invalidation.
 	if(collisionInstance.index != 0)
 	{
 	    glm::vec2 oldPosition = context->world->transforms.getPosition(transformInstance);
@@ -1010,7 +975,7 @@ namespace api
 	    
 	    if(glm::length(displacement) > 0)
 	    {
-		context->physics->getTree()->moveProxy(
+	        context->world->collisions.tree.moveProxy(
 		    context->world->collisions.getNode(collisionInstance),
 		    displacement);
 	    }

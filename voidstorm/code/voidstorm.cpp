@@ -8,6 +8,7 @@
 #include "voidstorm_particle.cpp"
 #include "voidstorm_render.cpp"
 #include "voidstorm_shape.cpp"
+#include "voidstorm_collision.cpp"
 #include "voidstorm_physics.cpp"
 #include "voidstorm_api.cpp"
 
@@ -212,7 +213,7 @@ int main(int argv, char** argc)
 	world->sprites.allocate(VOIDSTORM_SPRITE_COMPONENT_COUNT);
 
 	ResourceManager* resources = new(permanentStack->alloc(sizeof(ResourceManager))) ResourceManager(permanentStack, renderer->getContext());
-	PhysicsWorld* physics = new(permanentStack->alloc(sizeof(PhysicsWorld))) PhysicsWorld(permanentStack, renderer->getLineRenderer());
+	PhysicsWorld* physics = new(permanentStack->alloc(sizeof(PhysicsWorld))) PhysicsWorld(renderer->getLineRenderer());
 
 #ifdef VOIDSTORM_INTERNAL
 	tinystl::vector<LuaFile> luaFiles;
@@ -359,6 +360,7 @@ int main(int argv, char** argc)
 	    if(isKeyDownAndReleased(&gameInput, SDL_SCANCODE_R))
 	    {
 		worldStack->reset();
+		
 		world->reset();
 		renderer->getParticleEngine()->reset();
 		

@@ -7,17 +7,7 @@ ParticleEngine::ParticleEngine(dcutil::StackAllocator* _stack, dcfx::Context* _r
 {
     srand((unsigned int)time(NULL));
 
-    memoryPools[0] = dcutil::PoolAllocator(
-	_stack->alloc(s_particleBufferSize[0] * 10000 * sizeof(Particle)),
-	s_particleBufferSize[0] * sizeof(Particle), 10000);
-    
-    memoryPools[1] = dcutil::PoolAllocator(
-	_stack->alloc(s_particleBufferSize[1]  * 100 * sizeof(Particle)),
-	s_particleBufferSize[1] * sizeof(Particle), 100);
-    
-    memoryPools[2] = dcutil::PoolAllocator(
-	_stack->alloc(s_particleBufferSize[2] * 10 * sizeof(Particle)),
-	s_particleBufferSize[2] * sizeof(Particle), 10);
+    reset();
 }
 
 void ParticleEngine::reset()
@@ -38,6 +28,18 @@ void ParticleEngine::reset()
 	emitters[i] = ParticleEmitter();
 	emittersInPlay[i] = nullptr;
     }
+
+    memoryPools[0] = dcutil::PoolAllocator(
+	stack->alloc(s_particleBufferSize[0] * 10000 * sizeof(Particle)),
+	s_particleBufferSize[0] * sizeof(Particle), 10000);
+    
+    memoryPools[1] = dcutil::PoolAllocator(
+	stack->alloc(s_particleBufferSize[1]  * 100 * sizeof(Particle)),
+	s_particleBufferSize[1] * sizeof(Particle), 100);
+    
+    memoryPools[2] = dcutil::PoolAllocator(
+	stack->alloc(s_particleBufferSize[2] * 10 * sizeof(Particle)),
+	s_particleBufferSize[2] * sizeof(Particle), 10);
 }
 
 ParticleEffectHandle ParticleEngine::createHandle(ParticleEffectDescription* desc)

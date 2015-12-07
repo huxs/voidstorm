@@ -102,7 +102,7 @@ struct CollisionResponderManager
 
 	int entityCount;
 
-	// TODO (daniel): Decide on max number of collisions per frame.
+	// TODO (daniel): Decide on max number of collisions per frame
 	Entity entity[5];
 	glm::vec2 position[5];
     };
@@ -124,74 +124,6 @@ struct CollisionResponderManager
 
     dcutil::StackAllocator* stack;
     ComponentMap map;	
-};
-
-
-struct DbvtNode;
-struct Contact;
-enum ShapeType;
-struct PolygonShape;
-struct CircleShape;
-struct CollisionManager
-{
-    CollisionManager(dcutil::StackAllocator* _stack)
-	    : stack(_stack) {}
-
-    struct Instance { int index; };
-
-    struct ShapeData
-    {
-	glm::vec2 offset;
-	ShapeType shape;
-	
-	union
-	{
-	    void* ptr;
-	    PolygonShape* polygon;
-	    CircleShape* circle;
-	} data;
-    };
-    
-    struct Data
-    {
-	uint32_t count;
-	uint32_t used;
-	void* data;
-
-	Entity* entities;
-	uint32_t* type;
-	uint32_t* mask;
-
-	ShapeData* shape;
-	        
-	DbvtNode** node; // Reference to the physics data structure
-	Contact* contact; // Single linked list of contacts
-	
-    } data;
-
-    void allocate(uint32_t count);
-    Instance create(Entity e,  uint32_t type, uint32_t mask);
-    void destroy(Instance i);
-    Instance lookup(Entity e) { return { map.lookup(e) }; };
-
-    void setType(Instance i, uint32_t type) { data.type[i.index] = type; }
-    uint32_t getType(Instance i) { return data.type[i.index]; }
-    void setMask(Instance i, uint32_t mask) { data.mask[i.index] = mask; }
-    void setOffset(Instance i, const glm::vec2& offset) { data.shape[i.index].offset = offset; }
-
-    void setNode(Instance i, DbvtNode* node) { data.node[i.index] = node; }
-    DbvtNode* getNode(Instance i) { return data.node[i.index]; }
-
-    void addContacts(Instance i, Contact* contacts, int count);
-    void resetContacts(Instance i);
-
-    CircleShape* createCircleShape(Instance i);
-    PolygonShape* createPolygonShape(Instance i);
-    
-    void setRadius(Instance i, float radius);
-
-    dcutil::StackAllocator* stack;
-    ComponentMap map;
 };
 
 struct SpriteManager
@@ -228,25 +160,4 @@ struct SpriteManager
     
     dcutil::StackAllocator* stack;
     ComponentMap map;
-};
-
-struct World
-{
-    World(dcutil::StackAllocator* stack)
-	    :
-	    transforms(stack),
-	    physics(stack),
-	    collisions(stack),
-	    responders(stack),
-	    sprites(stack)
-	{}
-
-    void reset();
-
-    EntityManager entities;
-    TransformManager transforms;
-    PhysicsManager physics;
-    CollisionManager collisions;
-    CollisionResponderManager responders;
-    SpriteManager sprites;
 };

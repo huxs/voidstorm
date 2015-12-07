@@ -1,11 +1,8 @@
 
-function GameInitialize()
+function GameInitialize()  
 
-   -- Maps Entities to Sprites.
-   sprites = {}
-
-   -- Load sprite definitions.
    dofile "sprite.lua"
+   sprites = {}
 
    -- Load Concretes.
    Bullet = class(MovableCollidableSprite)
@@ -38,6 +35,8 @@ function GameInitialize()
    Map.start();
 
    voidstorm.setPostProcessParams(3.0, 1.0, 0.0)
+
+   collectgarbage()
 
 end
 

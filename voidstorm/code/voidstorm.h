@@ -52,11 +52,35 @@
 #include "voidstorm_input.h"
 #include "voidstorm_entity.h"
 #include "voidstorm_component.h"
-#include "voidstorm_render.h"
+
 #include "voidstorm_shape.h"
+#include "voidstorm_collision.h"
+
+#include "voidstorm_render.h"
 #include "voidstorm_physics.h"
 
 extern HeapAllocator* g_allocator;
+
+struct World
+{
+    World(dcutil::StackAllocator* stack)
+	    :
+	    transforms(stack),
+	    physics(stack),
+	    collisions(stack),
+	    responders(stack),
+	    sprites(stack)
+	{}
+
+    void reset();
+
+    EntityManager entities;
+    TransformManager transforms;
+    PhysicsManager physics;
+    CollisionManager collisions;
+    CollisionResponderManager responders;
+    SpriteManager sprites;
+};
 
 struct VoidstormContext
 {
