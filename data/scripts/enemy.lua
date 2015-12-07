@@ -19,7 +19,7 @@ function WormPart.destroy(self)
 
    local remainingParts = self.parent.partCount - self.index
 
-   -- Construct a new worm.
+   -- Construct a new worm
    if remainingParts > 0 then
 
       local newWorm = Worm(self.parent.parts[self.index + 1]:getPosition(), 0)
@@ -34,10 +34,10 @@ function WormPart.destroy(self)
 
       newWorm.partCount = remainingParts
 
-      table.insert(Map.enemies, newWorm)
+      table.insert(World.enemies, newWorm)
    end
 
-   -- Destroy parts of the old worm.
+   -- Destroy parts of the old worm
    self.parent.partCount = self.index - 1
 
    for i = self.index, self.index + remainingParts do
@@ -77,7 +77,7 @@ function Worm.destroy(self)
       Sprite.destroy(self.parts[i])
    end
 
-   -- Flag this for removal by the enemy manager.
+   -- Flag this for removal by the enemy manager
    self.isDead = 1
 
 end

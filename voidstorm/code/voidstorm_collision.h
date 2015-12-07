@@ -50,6 +50,8 @@ private:
 struct CollisionManager
 {
     CollisionManager(dcutil::StackAllocator* _stack);
+
+    void reset();
     
     struct Instance { int index; };
 
@@ -75,9 +77,7 @@ struct CollisionManager
 	Entity* entities;
 	uint32_t* type;
 	uint32_t* mask;
-
-	ShapeData* shape;
-	        
+	ShapeData* shape;	        
 	DbvtNode** node; // Reference to the physics data structure
 	Contact* contact; // Single linked list of contacts
 	
@@ -112,12 +112,11 @@ struct CollisionManager
 struct ContactResult
 {
     ContactResult()
-	    : hit(false){}
+	    : hit(false) {}
     
     bool hit;
     glm::vec2 normal;
-    glm::vec2 position;
-    
+    glm::vec2 position;    
     float r;
 };
 

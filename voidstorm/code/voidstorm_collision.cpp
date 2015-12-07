@@ -306,6 +306,14 @@ CollisionManager::CollisionManager(dcutil::StackAllocator* _stack)
 
 }
 
+void CollisionManager::reset()
+{
+    for(uint32_t i = 1; i < data.used; ++i)
+    {
+	tree.destroyProxy(data.node[i]);
+    }
+}
+
 void CollisionManager::allocate(uint32_t count)
 {
     size_t size = count * (sizeof(Entity)

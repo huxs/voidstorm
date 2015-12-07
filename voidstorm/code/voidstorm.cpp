@@ -12,6 +12,27 @@
 #include "voidstorm_physics.cpp"
 #include "voidstorm_api.cpp"
 
+void World::reset()
+{
+    entities.reset();
+    
+    transforms.data.used = 1;
+    transforms.map = ComponentMap();
+    
+    physics.data.used = 1;
+    physics.map = ComponentMap();
+
+    collisions.reset();
+    collisions.data.used = 1;
+    collisions.map = ComponentMap();
+    
+    responders.data.used = 1;
+    responders.map = ComponentMap();
+    
+    sprites.data.used = 1;
+    sprites.map = ComponentMap();
+}
+
 enum State
 {
     RUNNING,
@@ -213,7 +234,6 @@ int main(int argv, char** argc)
 	world->sprites.allocate(VOIDSTORM_SPRITE_COMPONENT_COUNT);
 
 	ResourceManager* resources = new(permanentStack->alloc(sizeof(ResourceManager))) ResourceManager(permanentStack, renderer->getContext());
-	PhysicsWorld* physics = new(permanentStack->alloc(sizeof(PhysicsWorld))) PhysicsWorld(renderer->getLineRenderer());
 
 #ifdef VOIDSTORM_INTERNAL
 	tinystl::vector<LuaFile> luaFiles;
@@ -244,7 +264,6 @@ int main(int argv, char** argc)
 
 	VoidstormContext context;
 	context.renderer = renderer;
-	context.physics = physics;
 	context.resources = resources;
 	context.input = &gameInput;
 	context.world = world;
@@ -477,7 +496,7 @@ int main(int argv, char** argc)
 		}
 	    }
 
-	    physics->simulate(world, gameInput.dt);
+	    simulate(world, gameInput.dt);
 
 	    renderer->getParticleEngine()->update(gameInput.dt);
 

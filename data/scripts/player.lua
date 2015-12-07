@@ -1,26 +1,3 @@
--- Effect descripton for a trailing particle effect following bullets
-bullet_trail = ParticleEffect("bullet_trail")
-
-bullet_trail_emitter0 = bullet_trail:addEmitter()
-bullet_trail_emitter0.particlesPerEmit = 1
-bullet_trail_emitter0.spawntime = 0.1
-bullet_trail_emitter0.lifetimeMin = 2.0
-bullet_trail_emitter0.lifetimeMax = 3.0
-bullet_trail_emitter0.sizeMin = 0.2
-bullet_trail_emitter0.sizeMax = 0.5
-bullet_trail_emitter0.rotationMin = 0.0
-bullet_trail_emitter0.rotationMax = 3.14
-bullet_trail_emitter0.colorMin = color.new(0.1,0.1,0.1,0.1)
-bullet_trail_emitter0.colorMax = color.new(0.1,0.1,0.1,0.1)
-bullet_trail_emitter0.startColor = color.new(0.1,0.1,0.1,0.1)
-bullet_trail_emitter0.endColor = color.new(0,0,0,0)
-bullet_trail_emitter0.force = vec2.new(100,100)
-bullet_trail_emitter0.spread = 360
-bullet_trail_emitter0.position = vec2.new(0, 0)
-bullet_trail_emitter0.relative = true
-bullet_trail_emitter0.texture = texture.new("diamond.dds")
-
-bullet_trail:store()
 
 function Bullet.new(self, parent, dir)
 
@@ -85,59 +62,6 @@ function Bullet:update(index)
 
 end
 
--- Thruster effect descripton used by the player ship
-thruster = ParticleEffect("thruster")
-
-local lifetimeMin = 0.1
-local lifetimeMax = 0.5
-local sizeMin = 0.2
-local sizeMax = 0.4
-local spreadAngle = 90
-local rightPosition = vec2.new(7, 24)
-local leftPosition = vec2.new(-7, 24)
-local idleThrusterForce = vec2.new(75, 75)
-local thrusterTexture = texture.new("boulder.dds")
-
-thruster_emitter0 = thruster:addEmitter()
-thruster_emitter0.lifetimeMin = lifetimeMin
-thruster_emitter0.lifetimeMax = lifetimeMax
-thruster_emitter0.sizeMin = sizeMin
-thruster_emitter0.sizeMax = sizeMax
-thruster_emitter0.spread = spreadAngle
-thruster_emitter0.position = rightPosition
-thruster_emitter0.texture = thrusterTexture
-
-thruster_emitter1 = thruster:addEmitter()
-thruster_emitter1.lifetimeMin = lifetimeMin
-thruster_emitter1.lifetimeMax = lifetimeMax
-thruster_emitter1.sizeMin = sizeMin
-thruster_emitter1.sizeMax = sizeMax
-thruster_emitter1.spread = spreadAngle
-thruster_emitter1.position = leftPosition
-thruster_emitter1.texture = thrusterTexture
-
-thruster_emitter2 = thruster:addEmitter()
-thruster_emitter2.lifetimeMin = lifetimeMin
-thruster_emitter2.lifetimeMax = lifetimeMax
-thruster_emitter2.sizeMin = sizeMin - 0.1
-thruster_emitter2.sizeMax = sizeMax
-thruster_emitter2.force = idleThrusterForce
-thruster_emitter2.spread = spreadAngle
-thruster_emitter2.position = rightPosition
-thruster_emitter2.texture = thrusterTexture
-
-thruster_emitter3 = thruster:addEmitter()
-thruster_emitter3.lifetimeMin = lifetimeMin
-thruster_emitter3.lifetimeMax = lifetimeMax
-thruster_emitter3.sizeMin = sizeMin - 0.1
-thruster_emitter3.sizeMax = sizeMax
-thruster_emitter3.force = idleThrusterForce
-thruster_emitter3.spread = spreadAngle
-thruster_emitter3.position = leftPosition
-thruster_emitter3.texture = thrusterTexture
-
-thruster:store()
-
 function Player.new(self, pos)
 
    MovableCollidableSprite.new(self, pos, type.player, bit.bor(type.wall, type.enemy))
@@ -172,7 +96,7 @@ function Player.update(self)
    self.thruster:setRotation(player:getRotation())
    self.thruster:setDepth(player:getDepth())
 
-   -- Override thruster description.
+   -- Override thruster description
    thruster.emitters[1].colorMin = player:getColor()
    thruster.emitters[2].colorMin = player:getColor()
    thruster.emitters[3].colorMin = player:getColor()
@@ -197,8 +121,8 @@ function Player.update(self)
       
       thruster.emitters[1].particlesPerEmit = 1
       thruster.emitters[2].particlesPerEmit = 1
-      thruster.emitters[1].spawnTime = 0.975 - (1 * ls)
-      thruster.emitters[2].spawnTime = 0.975 - (1 * ls)
+      thruster.emitters[1].spawntime = 0.9 - (1 * ls)
+      thruster.emitters[2].spawntime = 0.9 - (1 * ls)
       thruster.emitters[1].force = vec2.new(ls * 600, ls * 600)
       thruster.emitters[2].force = vec2.new(ls * 600, ls * 600)
       
@@ -212,7 +136,7 @@ function Player.update(self)
 
    thruster:store()
 
-   -- Shoot bullets.
+   -- Shoot bullets
    if self.cooldown <= 0 then
      if #rightStick > 0.3 then
 	 local dir = rightStick.normalize	 	 
@@ -225,13 +149,13 @@ function Player.update(self)
       self.cooldown = self.cooldown - dt
    end
 
-   -- Update bullets in reverse in case of removal.
+   -- Update bullets in reverse in case of removal
    for i = #self.bullets, 1, -1 do
       local bullet = self.bullets[i]      
       bullet:update(i)
    end
 
-   -- Destroy sprites we collide with.
+   -- Destroy sprites we collide with
    local collidedEntities = es.getCollidedEntity(self.entity)
    for i = #collidedEntities, 1, -1 do
 

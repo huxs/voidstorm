@@ -52,12 +52,9 @@
 #include "voidstorm_input.h"
 #include "voidstorm_entity.h"
 #include "voidstorm_component.h"
-
 #include "voidstorm_shape.h"
 #include "voidstorm_collision.h"
-
 #include "voidstorm_render.h"
-#include "voidstorm_physics.h"
 
 extern HeapAllocator* g_allocator;
 
@@ -85,7 +82,6 @@ struct World
 struct VoidstormContext
 {
     Renderer* renderer;
-    PhysicsWorld* physics;
     ResourceManager* resources;
     GameInput* input;
     World* world;

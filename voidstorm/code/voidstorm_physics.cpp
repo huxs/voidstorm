@@ -1,14 +1,9 @@
-PhysicsWorld::PhysicsWorld(LineRenderer* _linerenderer)
-	: linerenderer(_linerenderer)
-{}
-    
-void PhysicsWorld::simulate(World* world, float dt)
+static void simulate(World* world, float dt)
 {
     TIME_BLOCK(Physics_Simulate);
     
     for(uint32_t i = 1; i < world->physics.data.used; ++i)
     {
-	// TODO: Use ODE!
 	glm::vec2 friction = -world->physics.data.velocity[i] * 1.2f;
 	glm::vec2 totalForce = world->physics.data.force[i] + friction;
 			
@@ -29,14 +24,13 @@ void PhysicsWorld::simulate(World* world, float dt)
 	glm::vec2 pos = world->transforms.data.position[transform.index];
 	glm::vec2 newPosition = pos;
 
-	PhysicsManager::Instance inst = world->physics.lookup(e);
-	
+	PhysicsManager::Instance inst = world->physics.lookup(e);	
 	glm::vec2 vel = world->physics.data.velocity[inst.index];
 	glm::vec2 deltaVel = vel * dt;
 
 	ContactResult result;
 
-	// Itterations.
+	// Itterations
 	for(int k = 0; k < 3; ++k)
 	{
 	    Contact* c = &world->collisions.data.contact[i];	    
@@ -52,6 +46,7 @@ void PhysicsWorld::simulate(World* world, float dt)
 		    CollisionManager::ShapeData otherShapeData = world->collisions.data.shape[otherCollision.index];		    
 		    TransformManager::Instance otherTransform = world->transforms.lookup(other_e);
 
+		    // Execute collision routine
 		    result = c->callback(world, deltaVel, transform, shapeData, otherTransform, otherShapeData);
 		    
 		    if(result.hit)
@@ -82,6 +77,7 @@ void PhysicsWorld::simulate(World* world, float dt)
 		    }
 		}
 
+		// If we did collide resolve new position and velocity
 		if(result.hit)
 		{
 		    glm::vec2 desiredPos = newPosition + deltaVel;
@@ -101,7 +97,8 @@ void PhysicsWorld::simulate(World* world, float dt)
 		c = c->next;
 	    }
 
-	  
+
+	    // If we never collided with anything move the entity
 	    if(!result.hit)
 	    {
 		newPosition += deltaVel;
@@ -110,6 +107,7 @@ void PhysicsWorld::simulate(World* world, float dt)
 	    }		
 	}
 
+	// If the entity moved perform new contact test
 	glm::vec2 displacement = newPosition - pos;
 	float dispLength = glm::length(displacement);
 	if(dispLength > 0)

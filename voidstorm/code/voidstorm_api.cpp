@@ -3,6 +3,7 @@
     lua_pushnumber(L, val);			\
     lua_settable(L, -3);
 
+#ifdef VOIDSTORM_INTERNAL
 struct LuaFile
 {
     char name[180];
@@ -11,7 +12,6 @@ struct LuaFile
     FileTime timeWhenLoaded;
 };
 
-#ifdef VOIDSTORM_INTERNAL
 extern tinystl::vector<LuaFile>* g_luaFiles;
 #endif
 

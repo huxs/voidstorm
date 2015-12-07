@@ -312,19 +312,3 @@ void SpriteManager::destroy(SpriteManager::Instance i)
     //PRINT("CompId: %d\n", i.index);
     //PRINT("Components used: %d\n", data.used - 1);
 }
-
-void World::reset()
-{
-    entities.reset();
-    
-    transforms.data.used = 1;
-    transforms.map = ComponentMap();
-    physics.data.used = 1;
-    physics.map = ComponentMap();
-    collisions.data.used = 1;
-    collisions.map = ComponentMap();
-    responders.data.used = 1;
-    responders.map = ComponentMap();
-    sprites.data.used = 1;
-    sprites.map = ComponentMap();
-}
