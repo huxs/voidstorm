@@ -7,6 +7,8 @@ function World.initialize()
    Enemy = class(MovableCollidableSprite)
    Worm = class(MovableCollidableSprite)
    WormPart = class(CollidableSprite)
+   Boulder = class(MovableCollidableSprite)
+   TinyBoulder = class(MovableCollidableSprite)
 
    -- Collision flags
    type = {}
@@ -29,7 +31,8 @@ function World.initialize()
 
    dofile "effects.lua"
    dofile "player.lua"
-   dofile "enemy.lua"
+   dofile "worm.lua"
+   dofile "boulder.lua"
 
 end
 
@@ -92,11 +95,19 @@ function World.start()
 		      vec2.new(0, -World.wall_width))
 
    -- Spawn enemies
-   --table.insert(World.enemies, Worm(vec2.new(600, 300), 32))
-   --table.insert(World.enemies, Worm(vec2.new(2900, 100), 16))
-   --table.insert(World.enemies, Worm(vec2.new(2800, 1780), 32))
-   --table.insert(World.enemies, Worm(vec2.new(500, 1670), 16))
-   --table.insert(World.enemies, Worm(vec2.new(1400, 2590), 28))
+   math.randomseed(os.time())
+
+   for i = 0, 4 do
+      table.insert(World.enemies, Worm(vec2.new(math.random() * World.size.x,
+						math.random() * World.size.y), 16))
+
+   end
+
+   for i = 0, 16 do
+
+      table.insert(World.enemies, Boulder(vec2.new(math.random() * World.size.x,
+						   math.random() * World.size.y)))
+   end
 
 end
 

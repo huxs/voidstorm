@@ -11,7 +11,6 @@ function debug_view()
    p = 0
    for i,v in pairs(sprites) do
       --font.write("Entity: " .. i .. " Sprite: " .. tostring(v), vec2.new(10, p * 20 + 50), false)
-      --font.write("EntityID: " .. tostring(i), v:getPosition() + vec2.new(30, -30) , true)
       if v ~= nil then
 	 p = p + 1
       end

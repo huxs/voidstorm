@@ -218,11 +218,30 @@ namespace api
 
     static int vec2Div(lua_State* luaState)
     {
-	glm::vec2* v1 = (glm::vec2*)lua_touserdata(luaState, 1);
-	glm::vec2* v2 = (glm::vec2*)lua_touserdata(luaState, 2);
-	glm::vec2 v3 = (*v1)/(*v2);
 
-	toVec2(luaState, v3);
+	glm::vec2* v1 = (glm::vec2*)lua_touserdata(luaState, 1);
+	glm::vec2 result;
+	if(lua_isnumber(luaState, 1))
+	{
+	    glm::vec2* v1 = (glm::vec2*)lua_touserdata(luaState, 2);
+	    float scalar = (float)luaL_checknumber(luaState, 1);
+	    result = *v1 / scalar;
+	}
+	else if (lua_isnumber(luaState, 2))
+	{
+	    glm::vec2* v1 = (glm::vec2*)lua_touserdata(luaState, 1);
+	    float scalar = (float)luaL_checknumber(luaState, 2);
+	    result = *v1 / scalar;
+	}
+	else
+	{
+	    glm::vec2* v1 = (glm::vec2*)lua_touserdata(luaState, 1);
+	    glm::vec2* v2 = (glm::vec2*)lua_touserdata(luaState, 2);
+	    result = (*v1)/(*v2);
+	}
+
+	toVec2(luaState, result);
+	
 	return 1;
     }
 
@@ -230,13 +249,21 @@ namespace api
     {
 	glm::vec2* v1 = (glm::vec2*)lua_touserdata(luaState, 1);
 	glm::vec2 result;
-	if(lua_isnumber(luaState, 2))
+	if(lua_isnumber(luaState, 1))
 	{
-	    float scalar = (float)luaL_checknumber(luaState, 2);
+		glm::vec2* v1 = (glm::vec2*)lua_touserdata(luaState, 2);
+	    float scalar = (float)luaL_checknumber(luaState, 1);
 	    result = *v1 * scalar;
+	}
+	else if (lua_isnumber(luaState, 2))
+	{
+		glm::vec2* v1 = (glm::vec2*)lua_touserdata(luaState, 1);
+		float scalar = (float)luaL_checknumber(luaState, 2);
+		result = *v1 * scalar;
 	}
 	else
 	{
+		glm::vec2* v1 = (glm::vec2*)lua_touserdata(luaState, 1);
 	    glm::vec2* v2 = (glm::vec2*)lua_touserdata(luaState, 2);
 	    result = (*v1)*(*v2);
 	}
@@ -278,9 +305,21 @@ namespace api
 	return 1;
     }
 
+    static int vec2Dot(lua_State* luaState)
+    {
+	glm::vec2 v1 = *(glm::vec2*)lua_touserdata(luaState, 1);
+	glm::vec2 v2 = *(glm::vec2*)lua_touserdata(luaState, 2);
+
+	float r = glm::dot(v1, v2);
+	
+	lua_pushnumber(luaState, r);
+	return 1;
+    }
+
     const struct luaL_Reg vec2_functions_s[] =
     {
 	{"new", vec2New},
+	{"dot", vec2Dot},
 	{NULL, NULL}
     };
 
@@ -940,8 +979,9 @@ namespace api
 	{
 	    Entity& e = world->responders.data.collidedWith[instance.index].entity[i];
 	    glm::vec2 pos = world->responders.data.collidedWith[instance.index].position[i];
+	    glm::vec2 normal = world->responders.data.collidedWith[instance.index].normal[i];
 	    
-	    lua_createtable(luaState, 2, 0);	 
+	    lua_createtable(luaState, 3, 0);	 
 	     
 	    lua_pushinteger(luaState, e.id);
 	    lua_rawseti(luaState, -2, 1);
@@ -949,6 +989,9 @@ namespace api
 	    toVec2(luaState, pos);
 	    lua_rawseti(luaState, -2, 2);
 
+	    toVec2(luaState, normal);
+	    lua_rawseti(luaState, -2, 3);
+	    
 	    lua_rawseti(luaState, -2, i + 1);
 
 	    e = { (uint16_t)-1 };
@@ -1119,15 +1162,35 @@ namespace api
 	return 0;
     }
 
-    static int addForce(lua_State* luaState)
+    static int setForce(lua_State* luaState)
     {
 	World* world = getContext(luaState)->world;
 	PhysicsManager::Instance instance = world->physics.lookup({ (uint32_t)lua_tointeger(luaState, 1) });
 
 	glm::vec2* v = (glm::vec2*)lua_touserdata(luaState, 2);
 	
-	world->physics.addForce(instance, *v);
+	world->physics.setForce(instance, *v);
 	return 0;
+    }
+
+    static int setVelocity(lua_State* luaState)
+    {
+	World* world = getContext(luaState)->world;
+	PhysicsManager::Instance instance = world->physics.lookup({ (uint32_t)lua_tointeger(luaState, 1) });
+
+	glm::vec2* v = (glm::vec2*)lua_touserdata(luaState, 2);
+	
+	world->physics.setVelocity(instance, *v);
+	return 0;
+    }
+
+    static int getVelocity(lua_State* luaState)
+    {
+	World* world = getContext(luaState)->world;
+	PhysicsManager::Instance instance = world->physics.lookup({ (uint32_t)lua_tointeger(luaState, 1) });
+
+        toVec2(luaState, world->physics.getVelocity(instance));
+	return 1;
     }
 
     const static luaL_Reg es_functions[] =
@@ -1162,7 +1225,9 @@ namespace api
 	{ "setColor", setColor},
 	{ "getColor", getColor},
 	{ "setMass", setMass},
-	{ "addForce", addForce},
+	{ "addForce", setForce}, // TODO (daniel): Change scripts to use setForce
+	{ "setVelocity", setVelocity},
+	{ "getVelocity", getVelocity},
 	{ NULL, NULL }
     };
 

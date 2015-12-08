@@ -199,3 +199,21 @@ function MovableCollidableSprite:addForce(force)
    es.addForce(self.entity, force)
 
 end
+
+function MovableCollidableSprite:setVelocity(vel)
+
+   es.setVelocity(self.entity, vel)
+
+end
+
+function MovableCollidableSprite:getVelocity()
+
+   return es.getVelocity(self.entity)
+
+end
+
+function MovableCollidableSprite:getCollidedEntities()
+
+   return es.getCollidedEntity(self.entity)
+
+end

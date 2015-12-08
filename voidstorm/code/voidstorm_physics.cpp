@@ -31,7 +31,7 @@ static void simulate(World* world, float dt)
 	ContactResult result;
 
 	// Itterations
-	for(int k = 0; k < 3; ++k)
+	for(int k = 0; k < 1; ++k)
 	{
 	    Contact* c = &world->collisions.data.contact[i];	    
 	    while(c)
@@ -51,6 +51,19 @@ static void simulate(World* world, float dt)
 		    
 		    if(result.hit)
 		    {
+			glm::vec2 desiredPos = newPosition + deltaVel;
+		
+			newPosition = result.position;
+
+			world->transforms.data.position[transform.index] = newPosition;
+		    
+			vel = vel - 2 * glm::dot(vel, result.normal) * result.normal;
+		    
+			world->physics.data.velocity[inst.index] = vel;
+        
+			deltaVel = desiredPos - newPosition;
+			deltaVel = deltaVel - 2 * glm::dot(deltaVel, result.normal) *  result.normal;
+			
 			CollisionResponderManager::Instance responder = world->responders.lookup(e);
 			if(responder.index != 0)
 			{
@@ -70,30 +83,14 @@ static void simulate(World* world, float dt)
 				if(entityCount < ARRAYSIZE(world->responders.data.collidedWith[responder.index].entity))
 				{
 				    world->responders.data.collidedWith[responder.index].entity[entityCount] = other_e;
-				    world->responders.data.collidedWith[responder.index].position[entityCount++] = result.position;
+				    world->responders.data.collidedWith[responder.index].position[entityCount] = result.position;
+				    world->responders.data.collidedWith[responder.index].normal[entityCount++] = result.normal;
 				}
 			    }
 			}
 		    }
 		}
-
-		// If we did collide resolve new position and velocity
-		if(result.hit)
-		{
-		    glm::vec2 desiredPos = newPosition + deltaVel;
 		
-		    newPosition = result.position;
-
-		    world->transforms.data.position[transform.index] = newPosition;
-		    
-		    vel = vel - glm::dot(vel, result.normal) * result.normal;
-		    
-		    world->physics.data.velocity[inst.index] = vel;
-        
-		    deltaVel = desiredPos - newPosition;
-		    deltaVel = deltaVel - glm::dot(deltaVel, result.normal) *  result.normal;
-		}
-
 		c = c->next;
 	    }
 

@@ -56,15 +56,23 @@ function Worm.new(self, pos, partCount)
    self.timer = 0
    self.speed = 100
    self.amplitude = 2
-   self.offset = math.min(diamondTexture:size().x, diamondTexture:size().y)
+   self.offset = math.max(diamondTexture:size().x, diamondTexture:size().y) - 2.0
    self.partCount = partCount + 1
    self.parts = {}
    self.isDead = 0
 
+   self:randomDestination()
+
    table.insert(self.parts, self)
    for i = 2, self.partCount do
-      table.insert(self.parts, WormPart(pos + vec2.new(i * self.offset, 0), i, self))
+      table.insert(self.parts, WormPart(pos + vec2.new(i * self.offset,  0), i, self))
    end
+
+end
+
+function Worm.randomDestination(self)
+
+   self.destination = vec2.new(math.random() * World.size.x, math.random() * World.size.y);
 
 end
 
@@ -87,7 +95,12 @@ function Worm.update(self)
    self.timer = self.timer + dt
    v = self.amplitude * math.sin(self.timer)
 
-   local dir = (player:getPosition() - self:getPosition()).normalize
+   local d = self.destination - self:getPosition()
+   if #d < 5.0 then
+      self:randomDestination()
+   end
+
+   local dir = (self.destination - self:getPosition()).normalize
    local force = vec2.new(dir.x * self.speed, (dir.y + v) * self.speed)
    es.addForce(self.entity, force)
 
@@ -109,5 +122,3 @@ function Worm.update(self)
    end
 
 end
-
-

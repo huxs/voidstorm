@@ -83,7 +83,10 @@ struct PhysicsManager
     Instance lookup(Entity e) { return { map.lookup(e) }; };
 
     void setMass(Instance i, float mass) { data.mass[i.index] = mass; }
-    void addForce(Instance i, glm::vec2 force) { data.force[i.index] = force; }
+    void setForce(Instance i, glm::vec2 force) { data.force[i.index] = force; }
+    void setVelocity(Instance i, glm::vec2 velocity) { data.velocity[i.index] = velocity; }
+
+    glm::vec2 getVelocity(Instance i) { return data.velocity[i.index]; }
 
     dcutil::StackAllocator* stack;
     ComponentMap map;
@@ -105,6 +108,7 @@ struct CollisionResponderManager
 	// TODO (daniel): Decide on max number of collisions per frame
 	Entity entity[5];
 	glm::vec2 position[5];
+	glm::vec2 normal[5];
     };
     
     struct Data
