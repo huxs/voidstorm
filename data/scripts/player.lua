@@ -74,6 +74,7 @@ function Player.new(self, pos)
    self.cooldown = 0
    self.bullets = {}
    self.speed = 400
+   self.isDead = 0
 
    self.thruster = particle.new(thruster)
    self.thruster:play()
@@ -82,21 +83,23 @@ end
 
 function Player.destroy(self)
 
+   for i = #self.bullets, 1, -1 do
+      local bullet = self.bullets[i]      
+      bullet:destroy(i)
+   end
+
+   particle.delete(self.thruster)
+
    Sprite.destroy(self)
 
 end
 
-function Player.update(self)
-
-   self:animateHue()
-
-   voidstorm.setCameraPosition(self:getPosition())
+function Player.updateThruster(self, ls)
    
    self.thruster:setPosition(player:getPosition())
    self.thruster:setRotation(player:getRotation())
    self.thruster:setDepth(player:getDepth())
 
-   -- Override thruster description
    thruster.emitters[1].colorMin = player:getColor()
    thruster.emitters[2].colorMin = player:getColor()
    thruster.emitters[3].colorMin = player:getColor()
@@ -106,35 +109,42 @@ function Player.update(self)
    thruster.emitters[3].colorMax = player:getColor()
    thruster.emitters[4].colorMax = player:getColor()
 
-   local leftStick = input.getLeftStick()
-   local rightStick = input.getRightStick()
-
-   -- Move the player
-   self:addForce(leftStick * self.speed)
-
-   local ls = #leftStick  
    if ls > 0.3 then
-
-      if ls > 0.96 then
-	 ls = 0.96
-      end
-      
       thruster.emitters[1].particlesPerEmit = 1
       thruster.emitters[2].particlesPerEmit = 1
       thruster.emitters[1].spawntime = 0.9 - (1 * ls)
       thruster.emitters[2].spawntime = 0.9 - (1 * ls)
       thruster.emitters[1].force = vec2.new(ls * 600, ls * 600)
       thruster.emitters[2].force = vec2.new(ls * 600, ls * 600)
-      
-      angle = math.atan2(leftStick.y, leftStick.x)
-
-      self:setRotation(-angle + 1.5 * math.pi)
    else
       thruster.emitters[1].particlesPerEmit = 0
       thruster.emitters[2].particlesPerEmit = 0      
    end
 
    thruster:store()
+end
+
+function Player.update(self)
+
+   local leftStick = input.getLeftStick()
+   local rightStick = input.getRightStick()
+
+   -- Move the player
+   self:addForce(leftStick * self.speed)
+
+   -- Rotate the player
+   local ls = #leftStick  
+   if ls > 0.3 then
+      if ls > 0.96 then
+	 ls = 0.96
+      end
+
+      angle = math.atan2(leftStick.y, leftStick.x)
+      self:setRotation(-angle + 1.5 * math.pi)
+   end
+
+   self:animateHue()
+   self:updateThruster(ls)
 
    -- Shoot bullets
    if self.cooldown <= 0 then
@@ -163,13 +173,12 @@ function Player.update(self)
       local pos = collidedEntities[i][2]
       local sprite = sprites[entity]
       if sprite ~= nil then
-
-	 local p = particle.new(explosion)
-	 p:setPosition(pos)
-	 p:play()
-
 	 if sprite:getType() ~= type.wall then
-	    sprite:destroy()
+	    local p = particle.new(explosion)
+	    p:setPosition(pos)
+	    p:play()
+	    self:destroy()
+	    self.isDead = 1
 	 end
       end
    end 

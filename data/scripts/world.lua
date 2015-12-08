@@ -28,6 +28,7 @@ function World.initialize()
    World.enemies = {}
    World.size = vec2.new(3000, 3000)
    World.wall_width = 50
+   World.camera = World.size / 2
 
    dofile "effects.lua"
    dofile "player.lua"
@@ -50,6 +51,7 @@ function World.start()
    World.lw:setOrigin(vec2.new(0, 0))
    World.lw:setTexture(wallTexture)
    World.lw:setSize(vec2.new(World.wall_width, World.size.y))
+   World.lw:setColor(color.toRGBFromHSV(color.new(0,1,1,1)))
 
    World.bw = CollidableSprite(vec2.new(-World.wall_width, World.size.y), type.wall, 0)
    World.bw:setOrigin(vec2.new(0, 0))
@@ -97,13 +99,13 @@ function World.start()
    -- Spawn enemies
    math.randomseed(os.time())
 
-   for i = 0, 4 do
+   for i = 0, 16 do
       table.insert(World.enemies, Worm(vec2.new(math.random() * World.size.x,
 						math.random() * World.size.y), 16))
 
    end
 
-   for i = 0, 16 do
+   for i = 0, 64 do
 
       table.insert(World.enemies, Boulder(vec2.new(math.random() * World.size.x,
 						   math.random() * World.size.y)))
@@ -114,7 +116,7 @@ end
 function World.update()
 
    -- Disco walls
-   local hsv = color.toHSVFromRGB(player:getColor()) + color.new(60 * dt, 0, 0, 0)
+   local hsv = color.toHSVFromRGB(World.lw:getColor()) + color.new(60 * dt, 0, 0, 0)
    if hsv.h > 360 then
       hsv.h = 0
    end 
@@ -126,8 +128,17 @@ function World.update()
    World.rw:setColor(rgb)
    World.tw:setColor(rgb)
 
+   -- Center camera on player
+   voidstorm.setCameraPosition(World.camera)
+   
    -- Update player
-   player:update()
+   if player.isDead == 0 then
+
+      World.camera = player:getPosition()
+
+      player:update()
+      
+   end
 
    -- Update enemies in reverse in case of removal
    for i = #World.enemies, 1, -1 do
