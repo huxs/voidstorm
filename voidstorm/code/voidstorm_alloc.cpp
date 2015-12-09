@@ -63,15 +63,15 @@ void* LuaAllocatorCallback(void* ud, void* ptr, size_t osize, size_t nsize)
     return pRet;
 }
 
-extern HeapAllocator* g_allocator;
+//extern HeapAllocator* g_heapAllocator;
 
 void* TinyStlAllocator::static_allocate(size_t _bytes)
 {
-    return g_allocator->alloc(_bytes);
+    return g_heapAllocator->alloc(_bytes);
 }
 void TinyStlAllocator::static_deallocate(void* _ptr, size_t)
 {
-    g_allocator->free(_ptr);
+    g_heapAllocator->free(_ptr);
 }
 
 		

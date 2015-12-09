@@ -1,7 +1,7 @@
 static void simulate(World* world, float dt)
 {
     TIME_BLOCK(Physics_Simulate);
-    
+
     for(uint32_t i = 1; i < world->physics.data.used; ++i)
     {
 	glm::vec2 friction = -world->physics.data.velocity[i] * 1.2f;
@@ -11,7 +11,7 @@ static void simulate(World* world, float dt)
 
 	world->physics.data.velocity[i] += world->physics.data.acceleration[i] * dt;
     }
-    
+
     for(uint32_t i = 1; i < world->collisions.data.used; ++i)
     {
 	Entity e = world->collisions.data.entities[i];
@@ -33,9 +33,11 @@ static void simulate(World* world, float dt)
 	// Itterations
 	for(int k = 0; k < 1; ++k)
 	{
-	    Contact* c = &world->collisions.data.contact[i];	    
+	    Contact* c = &world->collisions.data.contact[i];
+	    int temp = 0;
 	    while(c)
 	    {
+		temp++;
 		Entity other_e = c->entity;
 
 		CollisionManager::Instance otherCollision = world->collisions.lookup(other_e);
@@ -46,9 +48,19 @@ static void simulate(World* world, float dt)
 		    CollisionManager::ShapeData otherShapeData = world->collisions.data.shape[otherCollision.index];		    
 		    TransformManager::Instance otherTransform = world->transforms.lookup(other_e);
 
-		    // Execute collision routine
-		    result = c->callback(world, deltaVel, transform, shapeData, otherTransform, otherShapeData);
+		    PhysicsManager::Instance otherInst = world->physics.lookup(other_e);	
+		    glm::vec2 otherVel = world->physics.data.velocity[otherInst.index];
+		    glm::vec2 otherDeltaVel = otherVel * dt;
 		    
+		    if (c->callback == NULL)
+		    {
+			PRINT("ERROR: Entity %d colliding with %d has null callback {%d}\n", e.index(), other_e.index(), temp);
+			break;
+		    }
+
+		    // Execute collision routine
+		    result = c->callback(world, deltaVel, otherDeltaVel, transform, shapeData, otherTransform, otherShapeData);
+
 		    if(result.hit)
 		    {
 			glm::vec2 desiredPos = newPosition + deltaVel;
@@ -118,6 +130,6 @@ static void simulate(World* world, float dt)
 	    world->collisions.tree.moveProxy(node, displacement);
 
 	    world->transforms.data.position[transform.index] = newPosition;
-	}
-    }   
+	}	
+    }
 }

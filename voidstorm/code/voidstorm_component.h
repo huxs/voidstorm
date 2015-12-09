@@ -22,9 +22,6 @@ struct ComponentMap
 
 struct TransformManager
 {
-    TransformManager(dcutil::StackAllocator* _stack)
-	    : stack(_stack) {}
-    
     struct Instance { int index; };
 	
     struct Data
@@ -54,15 +51,11 @@ struct TransformManager
     void setScale(Instance i, float scale) { data.scale[i.index] = scale;}
     float getScale(Instance i) { return data.scale[i.index]; }
     
-    dcutil::StackAllocator* stack;
     ComponentMap map;
 };
 
 struct PhysicsManager
 {
-    PhysicsManager(dcutil::StackAllocator* _stack)
-	    : stack(_stack) {}
-    
     struct Instance { int index; };
 
     struct Data
@@ -88,15 +81,11 @@ struct PhysicsManager
 
     glm::vec2 getVelocity(Instance i) { return data.velocity[i.index]; }
 
-    dcutil::StackAllocator* stack;
     ComponentMap map;
 };
 
 struct CollisionResponderManager
 {
-    CollisionResponderManager(dcutil::StackAllocator* _stack)
-	    : stack(_stack) {}
-    
     struct Instance { int index; };
 
     struct CollisionResult
@@ -104,8 +93,6 @@ struct CollisionResponderManager
 	CollisionResult() : entityCount(0) {}
 
 	int entityCount;
-
-	// TODO (daniel): Decide on max number of collisions per frame
 	Entity entity[5];
 	glm::vec2 position[5];
 	glm::vec2 normal[5];
@@ -126,15 +113,11 @@ struct CollisionResponderManager
     void destroy(Instance i);
     Instance lookup(Entity e) { return { map.lookup(e) }; };
 
-    dcutil::StackAllocator* stack;
     ComponentMap map;	
 };
 
 struct SpriteManager
 {
-    SpriteManager(dcutil::StackAllocator* _stack)
-	    : stack(_stack) {}
-    
     struct Instance { int index; };
 
     struct Data
@@ -162,6 +145,5 @@ struct SpriteManager
     void setSize(Instance i, glm::vec2 size) { data.size[i.index] = size; }
     void setOrigin(Instance i, glm::vec2 origin) { data.origin[i.index] = origin; }
     
-    dcutil::StackAllocator* stack;
     ComponentMap map;
 };

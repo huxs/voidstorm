@@ -23,7 +23,6 @@ function World.initialize()
    boulderTexture = texture.new("boulder.dds")
    wheelTexture = texture.new("wheel.dds")
    diamondTexture = texture.new("diamond.dds")
-
    
    World.enemies = {}
    World.size = vec2.new(3000, 3000)
@@ -99,14 +98,12 @@ function World.start()
    -- Spawn enemies
    math.randomseed(os.time())
 
-   for i = 0, 16 do
+   for i = 0, 8 do
       table.insert(World.enemies, Worm(vec2.new(math.random() * World.size.x,
 						math.random() * World.size.y), 16))
-
    end
 
-   for i = 0, 64 do
-
+   for i = 0, 32 do
       table.insert(World.enemies, Boulder(vec2.new(math.random() * World.size.x,
 						   math.random() * World.size.y)))
    end

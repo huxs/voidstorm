@@ -6,7 +6,6 @@ dofile "class.lua"
 
 Sprite = class(nil)
 
-sprites = {}
 
 function Sprite.new(self, pos)
 

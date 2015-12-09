@@ -1,7 +1,5 @@
 #pragma once
 
-struct Contact;
-
 struct DbvtNode
 {
     DbvtNode(Entity _entity, const AABB& _aabb)
@@ -23,6 +21,7 @@ struct DbvtNode
 };
 
 // Dynamic bounding volume tree
+struct Contact;
 class LineRenderer;
 class Dbvt
 {
@@ -49,7 +48,7 @@ private:
 
 struct CollisionManager
 {
-    CollisionManager(dcutil::StackAllocator* _stack);
+    CollisionManager();
 
     void reset();
     
@@ -101,12 +100,16 @@ struct CollisionManager
 
     void createCircleShape(Instance i, float radius, const glm::vec2& position);
     void createPolygonShape(Instance i, glm::vec2* vertices, uint32_t count);
+
+    void* allocateShape(ShapeType type);
+    void freeShape(ShapeType type, void* ptr);
     
     void setRadius(Instance i, float radius);
-
-    dcutil::StackAllocator* stack;
+    
     ComponentMap map;
     Dbvt tree;
+    dcutil::PoolAllocator circlePool;
+    dcutil::PoolAllocator polygonPool;
 };
 
 struct ContactResult
@@ -123,14 +126,13 @@ struct ContactResult
 struct World;
 typedef ContactResult CONTACT_CALLBACK(World* world,
 				       glm::vec2 deltaVel,
+				       glm::vec2 otherDeltaVel,
 				       TransformManager::Instance transformA,
 				       CollisionManager::ShapeData shapeA,
 				       TransformManager::Instance transformB,
 				       CollisionManager::ShapeData shapeB);
 
 extern CONTACT_CALLBACK* g_contactCallbacks[ShapeType::NONE][ShapeType::NONE];
-
-void setupContactCallbacks();
 
 struct Contact
 {

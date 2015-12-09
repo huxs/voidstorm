@@ -20,12 +20,7 @@
   - Polygon-Particle / Splines / Swirling particles.
   - Concave polygons (Multple convex per entity..)
   - Audio!
-  - Menus!
-  
-  TODO (daniel): *BUGS*
-  - Shooting continues after releasing the right stick sometimes..
-  - Random crash release mode. Moar testing..
-    
+  - Menus! 
 */
 
 #include <SDL2/SDL.h>
@@ -56,19 +51,12 @@
 #include "voidstorm_collision.h"
 #include "voidstorm_render.h"
 
-extern HeapAllocator* g_allocator;
+extern HeapAllocator* g_heapAllocator;
+extern dcutil::StackAllocator* g_permStackAllocator;
+extern dcutil::StackAllocator* g_gameStackAllocator;
 
 struct World
 {
-    World(dcutil::StackAllocator* stack)
-	    :
-	    transforms(stack),
-	    physics(stack),
-	    collisions(stack),
-	    responders(stack),
-	    sprites(stack)
-	{}
-
     void reset();
 
     EntityManager entities;

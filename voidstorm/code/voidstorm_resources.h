@@ -186,7 +186,6 @@ struct ResourceManager
     ResourceManager(dcutil::StackAllocator* stack, dcfx::Context* renderCtx)
 	    : textures(renderCtx, stack), effects(stack)
 	{}
-
     ~ResourceManager();
 
     TextureManager textures;

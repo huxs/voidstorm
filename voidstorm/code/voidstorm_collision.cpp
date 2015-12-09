@@ -299,207 +299,10 @@ int Dbvt::query(DbvtNode* node, Contact* contacts)
 
     return contactCounter;
 }
-
-CollisionManager::CollisionManager(dcutil::StackAllocator* _stack)
-	: stack(_stack), tree(stack->alloc(sizeof(DbvtNode) * DBVT_NODE_POOL_SIZE))
-{
-
-}
-
-void CollisionManager::reset()
-{
-    for(uint32_t i = 1; i < data.used; ++i)
-    {
-	tree.destroyProxy(data.node[i]);
-    }
-}
-
-void CollisionManager::allocate(uint32_t count)
-{
-    size_t size = count * (sizeof(Entity)
-			   + 2 * sizeof(uint32_t)
-			   + sizeof(ShapeData)
-			   + sizeof(DbvtNode*)
-			   + sizeof(Contact));
-
-    data.data = stack->alloc(size);
-    data.count = count;
-    data.used = 1;
-
-    data.entities = (Entity*)data.data;
-    data.type = (uint32_t*)(data.entities + count);
-    data.mask = (uint32_t*)(data.type + count);
-    data.shape = (ShapeData*)(data.mask + count);
-    data.node = (DbvtNode**)(data.shape + count);
-    data.contact = (Contact*)(data.node + count);
-}
-
-CollisionManager::Instance CollisionManager::create(Entity e, uint32_t type, uint32_t mask)
-{
-    int compIndex = data.used++;
-    map.add(stack, e, compIndex);
-    data.entities[compIndex] = e;
-    data.type[compIndex] = type;
-    data.mask[compIndex] = mask;
-    data.shape[compIndex].offset = glm::vec2(0, 0);
-    data.shape[compIndex].shape = ShapeType::NONE;
-    data.node[compIndex] = nullptr;
-    
-    data.contact[compIndex].entity = Entity_Null;
-    data.contact[compIndex].next = nullptr;
-    
-    //PRINT("CollisionComponent created for entity I:%d - G:%d!\n", e.index(), e.generation());
-    //PRINT("CompId: %d\n", compIndex);
-    //PRINT("Components used: %d\n", data.used - 1);
-    
-    return { compIndex };
-}
-
-void CollisionManager::destroy(Instance i)
-{
-    if(i.index == 0)
-	return;
-
-    uint32_t lastIndex = data.used - 1;
-    Entity e = data.entities[i.index];
-    Entity last_e = data.entities[lastIndex];
-
-    data.entities[i.index] = data.entities[lastIndex];
-    data.type[i.index] = data.type[lastIndex];
-    data.mask[i.index] = data.mask[lastIndex];
-    data.shape[i.index].offset = data.shape[lastIndex].offset;
-
-    if(data.shape[i.index].shape != ShapeType::NONE)
-	g_allocator->free(data.shape[i.index].data.ptr);
-
-    data.shape[i.index].shape = data.shape[lastIndex].shape;
-    data.shape[i.index].data = data.shape[lastIndex].data;
-
-    tree.destroyProxy(data.node[i.index]);
-    
-    data.node[i.index] = data.node[lastIndex];
-    
-    data.contact[i.index].entity = data.contact[lastIndex].entity;
-    data.contact[i.index].next = data.contact[lastIndex].next;
-    
-    map.remove(e);
-    map.remove(last_e);
-    map.add(stack, last_e, i.index);
-
-    data.used--;
-
-    //PRINT("CollisionComponent destroyed for entity I:%d - G:%d!\n", e.index(), e.generation());
-    //PRINT("CompId: %d\n", i.index);
-    //PRINT("Components used: %d\n", data.used - 1);
-}
-
-void CollisionManager::addContacts(Instance i)
-{
-   // Query for contacts
-    Contact contacts[1024];
-    int count = tree.query(data.node[i.index], contacts);
-    
-    Contact* contact = &data.contact[i.index];
-    
-    for(int index = 0; index < count; ++index)
-    {
-	Contact* otherContact = contacts + index;
-	do
-	{
-	    if(contact->entity == otherContact->entity)
-	    {
-		break;
-	    }
-
-	    if(contact->entity != Entity_Null && !contact->next)
-	    {
-		Contact* newContact = (Contact*)stack->alloc(sizeof(Contact));
-		newContact->entity = Entity_Null;
-		newContact->next = nullptr;
-
-		contact->next = newContact;
-	    }
-
-	    if(contact->entity == Entity_Null)
-	    {
-		contact->entity = otherContact->entity;
-
-		ShapeType shapeA = data.shape[i.index].shape;
-		
-		Instance instance = lookup(otherContact->entity);
-		ShapeType shapeB = data.shape[instance.index].shape;
-
-		contact->callback = g_contactCallbacks[shapeA][shapeB];
-		assert(contact->callback != NULL);
-
-		break;
-	    }
-	
-	    contact = contact->next;
-
-	} while(contact);
-    }
-}
-
-void CollisionManager::resetContacts(Instance i)
-{
-    Contact* contact = &data.contact[i.index];
-    while(contact)
-    {
-	contact->entity = Entity_Null;
-	contact = contact->next;
-    }
-}
-
-void CollisionManager::createCircleShape(Instance i, float radius, const glm::vec2& position)
-{
-    // Allocate shape
-    if(data.shape[i.index].shape != ShapeType::NONE)
-	g_allocator->free(data.shape[i.index].data.ptr);
-    
-    data.shape[i.index].shape = ShapeType::CIRCLE;
-    data.shape[i.index].data.ptr = g_allocator->alloc(sizeof(CircleShape));
-    data.shape[i.index].data.circle->radius = radius;
-
-    // Build AABB that covers the collision shape	    
-    AABB aabb;
-    aabb.lower = glm::vec2(position.x - radius, position.y - radius);
-    aabb.upper = glm::vec2(position.x + radius, position.y + radius);
-
-    // Insert into tree
-    data.node[i.index] = tree.createProxy(data.entities[i.index], aabb);
-
-    addContacts(i);	     
-}
-
-void CollisionManager::createPolygonShape(Instance i, glm::vec2* vertices, uint32_t count)
-{
-    // Allocate shape
-    if(data.shape[i.index].shape != ShapeType::NONE)
-	g_allocator->free(data.shape[i.index].data.ptr);
-    
-    data.shape[i.index].shape = ShapeType::POLYGON;
-    data.shape[i.index].data.ptr = g_allocator->alloc(sizeof(PolygonShape));
-
-    data.shape[i.index].data.polygon->set(vertices, count);
-
-    AABB aabb = data.shape[i.index].data.polygon->computeAABB();
-
-    // Insert into tree
-    data.node[i.index] = tree.createProxy(data.entities[i.index], aabb);
-
-    addContacts(i);
-}
-
-void CollisionManager::setRadius(Instance i, float radius)
-{
-    assert(data.shape[i.index].shape == ShapeType::CIRCLE);
-    data.shape[i.index].data.circle->radius = radius;
-}
-    
+  
 CONTACT_CALLBACK* g_contactCallbacks[ShapeType::NONE][ShapeType::NONE];
 
-static ContactResult circleVsCircle(World* world, glm::vec2 deltaVel, TransformManager::Instance transformA, CollisionManager::ShapeData shapeA, TransformManager::Instance transformB, CollisionManager::ShapeData shapeB)
+static ContactResult circleVsCircle(World* world, glm::vec2 deltaVel, glm::vec2 otherDeltaVel, TransformManager::Instance transformA, CollisionManager::ShapeData shapeA, TransformManager::Instance transformB, CollisionManager::ShapeData shapeB)
 {
     ContactResult result;
 
@@ -528,13 +331,13 @@ static ContactResult circleVsCircle(World* world, glm::vec2 deltaVel, TransformM
 	
 	result.hit = true;			        
 	result.normal = glm::normalize(center - otherCenter);
-	result.position = center - t * result.normal;	
+	result.position = center + t * result.normal;	
     }
     
     return result;
 }
 
-static ContactResult circleVsPolygon(World* world, glm::vec2 deltaVel, TransformManager::Instance transformA, CollisionManager::ShapeData shapeA, TransformManager::Instance transformB, CollisionManager::ShapeData shapeB)
+static ContactResult circleVsPolygon(World* world, glm::vec2 deltaVel, glm::vec2 otherDeltaVel, TransformManager::Instance transformA, CollisionManager::ShapeData shapeA, TransformManager::Instance transformB, CollisionManager::ShapeData shapeB)
 {
     ContactResult result;
 
@@ -629,16 +432,250 @@ static ContactResult circleVsPolygon(World* world, glm::vec2 deltaVel, Transform
     return result;
 }
 
-static ContactResult stub(World* world, glm::vec2 deltaVel, TransformManager::Instance transformA, CollisionManager::ShapeData shapeA, TransformManager::Instance transformB, CollisionManager::ShapeData shapeB)
+static ContactResult stub(World* world, glm::vec2 deltaVel, glm::vec2 otherDeltaVel, TransformManager::Instance transformA, CollisionManager::ShapeData shapeA, TransformManager::Instance transformB, CollisionManager::ShapeData shapeB)
 {
     ContactResult result;
     return result;
 }
 
-void setupContactCallbacks()
+CollisionManager::CollisionManager()
+	: tree(g_permStackAllocator->alloc(sizeof(DbvtNode) * DBVT_NODE_POOL_SIZE)),
+	  circlePool(g_permStackAllocator->alloc(sizeof(CircleShape) * 1024), sizeof(CircleShape), 1024),
+	  polygonPool(g_permStackAllocator->alloc(sizeof(PolygonShape) * 1024), sizeof(PolygonShape), 1024)
 {
     g_contactCallbacks[ShapeType::CIRCLE][ShapeType::CIRCLE] = circleVsCircle;
     g_contactCallbacks[ShapeType::POLYGON][ShapeType::POLYGON] = stub;
     g_contactCallbacks[ShapeType::CIRCLE][ShapeType::POLYGON] = circleVsPolygon;
     g_contactCallbacks[ShapeType::POLYGON][ShapeType::CIRCLE] = circleVsPolygon;
 }
+
+void CollisionManager::reset()
+{
+    for(uint32_t i = 1; i < data.used; ++i)
+    {
+	tree.destroyProxy(data.node[i]);
+    }
+
+    circlePool.initialize(sizeof(CircleShape), 1024);
+    polygonPool.initialize(sizeof(PolygonShape), 1024);
+}
+
+void CollisionManager::allocate(uint32_t count)
+{
+    size_t size = count * (sizeof(Entity)
+			   + 2 * sizeof(uint32_t)
+			   + sizeof(ShapeData)
+			   + sizeof(DbvtNode*)
+			   + sizeof(Contact));
+
+    data.data = g_permStackAllocator->alloc(size);
+    data.count = count;
+    data.used = 1;
+
+    data.entities = (Entity*)data.data;
+    data.type = (uint32_t*)(data.entities + count);
+    data.mask = (uint32_t*)(data.type + count);
+    data.shape = (ShapeData*)(data.mask + count);
+    data.node = (DbvtNode**)(data.shape + count);
+    data.contact = (Contact*)(data.node + count);
+}
+
+CollisionManager::Instance CollisionManager::create(Entity e, uint32_t type, uint32_t mask)
+{
+    int compIndex = data.used++;
+    map.add(g_permStackAllocator, e, compIndex);
+    data.entities[compIndex] = e;
+    data.type[compIndex] = type;
+    data.mask[compIndex] = mask;
+    data.shape[compIndex].offset = glm::vec2(0, 0);
+    data.shape[compIndex].shape = ShapeType::NONE;
+    data.node[compIndex] = nullptr;
+    
+    data.contact[compIndex].entity = Entity_Null;
+    data.contact[compIndex].next = nullptr;
+    
+    //PRINT("CollisionComponent created for entity I:%d - G:%d!\n", e.index(), e.generation());
+    //PRINT("CompId: %d\n", compIndex);
+    //PRINT("Components used: %d\n", data.used - 1);
+    
+    return { compIndex };
+}
+
+void CollisionManager::destroy(Instance i)
+{
+    if(i.index == 0)
+	return;
+
+    uint32_t lastIndex = data.used - 1;
+    Entity e = data.entities[i.index];
+    Entity last_e = data.entities[lastIndex];
+
+    data.entities[i.index] = data.entities[lastIndex];
+    data.type[i.index] = data.type[lastIndex];
+    data.mask[i.index] = data.mask[lastIndex];
+    data.shape[i.index].offset = data.shape[lastIndex].offset;
+
+    freeShape(data.shape[i.index].shape, data.shape[i.index].data.ptr);
+
+    data.shape[i.index].shape = data.shape[lastIndex].shape;
+    data.shape[i.index].data = data.shape[lastIndex].data;
+
+    tree.destroyProxy(data.node[i.index]);
+    
+    data.node[i.index] = data.node[lastIndex];
+    
+    data.contact[i.index].entity = data.contact[lastIndex].entity;
+    data.contact[i.index].callback = data.contact[lastIndex].callback;
+    data.contact[i.index].next = data.contact[lastIndex].next;
+    
+    map.remove(e);
+    map.remove(last_e);
+    map.add(g_permStackAllocator, last_e, i.index);
+
+    data.used--;
+
+    //PRINT("CollisionComponent destroyed for entity I:%d - G:%d!\n", e.index(), e.generation());
+    //PRINT("CompId: %d\n", i.index);
+    //PRINT("Components used: %d\n", data.used - 1);
+}
+
+void CollisionManager::addContacts(Instance i)
+{
+   // Query for contacts
+    Contact contacts[1024];
+    int count = tree.query(data.node[i.index], contacts);
+    
+    Contact* contact = &data.contact[i.index];
+    
+    for(int index = 0; index < count; ++index)
+    {
+	Contact* otherContact = contacts + index;
+	do
+	{
+	    if(contact->entity == otherContact->entity)
+	    {
+		break;
+	    }
+
+	    if(contact->entity != Entity_Null && !contact->next)
+	    {
+		Contact* newContact = (Contact*)g_permStackAllocator->alloc(sizeof(Contact));
+		newContact->entity = Entity_Null;
+		newContact->next = nullptr;
+
+		contact->next = newContact;
+	    }
+
+	    if(contact->entity == Entity_Null)
+	    {
+		contact->entity = otherContact->entity;
+
+		ShapeType shapeA = data.shape[i.index].shape;
+		
+		Instance instance = lookup(otherContact->entity);
+		ShapeType shapeB = data.shape[instance.index].shape;
+
+		contact->callback = g_contactCallbacks[shapeA][shapeB];
+		assert(contact->callback != NULL);
+
+		break;
+	    }
+	
+	    contact = contact->next;
+
+	} while(contact);
+    }
+
+    Contact* c = &data.contact[i.index];
+    while(c)
+    {
+	if(c->callback == NULL && c->entity != Entity_Null)
+	    PRINT("Error instance %d\n", i.index);
+	  
+	c = c->next;
+    }
+}
+
+void CollisionManager::resetContacts(Instance i)
+{
+    Contact* contact = &data.contact[i.index];
+    while(contact)
+    {
+	contact->entity = Entity_Null;
+	contact = contact->next;
+    }
+}
+
+void CollisionManager::createCircleShape(Instance i, float radius, const glm::vec2& position)
+{
+    // Allocate shape
+    if(data.shape[i.index].shape != ShapeType::NONE)
+	freeShape(data.shape[i.index].shape, data.shape[i.index].data.ptr);
+    
+    data.shape[i.index].shape = ShapeType::CIRCLE;
+    data.shape[i.index].data.ptr = allocateShape(ShapeType::CIRCLE);
+    data.shape[i.index].data.circle->radius = radius;
+
+    // Build AABB that covers the collision shape	    
+    AABB aabb;
+    aabb.lower = glm::vec2(position.x - radius, position.y - radius);
+    aabb.upper = glm::vec2(position.x + radius, position.y + radius);
+
+    // Insert into tree
+    data.node[i.index] = tree.createProxy(data.entities[i.index], aabb);
+
+    addContacts(i);	     
+}
+
+void CollisionManager::createPolygonShape(Instance i, glm::vec2* vertices, uint32_t count)
+{
+    // Allocate shape
+    if(data.shape[i.index].shape != ShapeType::NONE)
+	freeShape(data.shape[i.index].shape, data.shape[i.index].data.ptr);
+    
+    data.shape[i.index].shape = ShapeType::POLYGON;
+    data.shape[i.index].data.ptr = allocateShape(ShapeType::POLYGON);
+
+    data.shape[i.index].data.polygon->set(vertices, count);
+
+    AABB aabb = data.shape[i.index].data.polygon->computeAABB();
+
+    // Insert into tree
+    data.node[i.index] = tree.createProxy(data.entities[i.index], aabb);
+
+    addContacts(i);
+}
+
+void* CollisionManager::allocateShape(ShapeType type)
+{
+    switch(type)
+    {
+    case ShapeType::CIRCLE:
+	return circlePool.alloc(0);
+	break;
+    case ShapeType::POLYGON:
+	return polygonPool.alloc(0);
+	break;
+    }
+    return nullptr;
+}
+
+void CollisionManager::freeShape(ShapeType type, void* ptr)
+{
+    switch(type)
+    {
+    case ShapeType::CIRCLE:
+	circlePool.free(ptr);
+	break;
+    case ShapeType::POLYGON:
+	polygonPool.free(ptr);
+	break;
+    }
+}
+
+void CollisionManager::setRadius(Instance i, float radius)
+{
+    assert(data.shape[i.index].shape == ShapeType::CIRCLE);
+    data.shape[i.index].data.circle->radius = radius;
+}
+
