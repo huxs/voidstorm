@@ -37,10 +37,11 @@ function Bullet:update(index)
    -- Returns a 2D-table with the layout: table = { { entity0, pos0 }, { entity1, pos1 }, ... }
    local collidedEntities = es.getCollidedEntity(self.entity)
    for i = #collidedEntities, 1, -1 do
-
+      
       local entity = collidedEntities[i][1]
       local pos = collidedEntities[i][2]
       local sprite = sprites[entity]
+
       if sprite ~= nil then	 
 	 
 	 local p = particle.new(explosion)

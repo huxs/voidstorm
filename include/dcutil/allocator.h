@@ -75,6 +75,11 @@ namespace dcutil
 	    {
 		m_start = (PoolElement*)base;
 		
+		initialize(elementSize, numElements);
+	    }
+
+	void initialize(size_t elementSize, size_t numElements)
+	    {
 		union 
 		{
 		    void* as_void;
@@ -95,7 +100,7 @@ namespace dcutil
 
 		runner->m_next = nullptr;
 	    }
-
+	
 	void* alloc(size_t size)
 	    {
 		assert(m_next != nullptr && "Out of elements!");

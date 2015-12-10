@@ -29,6 +29,7 @@ struct PolygonShape
 struct CircleShape
 {
     float radius;
+    float padd;
 };
 
 struct RayShape

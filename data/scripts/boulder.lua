@@ -1,6 +1,6 @@
 function TinyBoulder.new(self, pos, dir)
 
-   MovableCollidableSprite.new(self, pos, type.enemy, type.wall)
+   MovableCollidableSprite.new(self, pos, type.enemy, bit.bor(type.wall, type.enemy, type.player))
 
    self:setCircleShape(10)
    self:setTexture(boulderTexture)
@@ -27,7 +27,7 @@ end
 
 function Boulder.new(self, pos)
 
-   MovableCollidableSprite.new(self, pos, type.enemy, type.wall)
+   MovableCollidableSprite.new(self, pos, type.enemy, bit.bor(type.wall, type.enemy, type.player))
 
    self:setCircleShape(20)
    self:setTextureAndSize(boulderTexture)
@@ -41,10 +41,10 @@ end
 function Boulder.destroy(self)
 
    for i = 0, 7 do
-      local angle = ((2 * 3.14) / 8) * i;
+      local angle = ((2 * math.pi) / 8) * i;
       local dir = vec2.new(math.cos(angle), math.sin(angle));
 
-      table.insert(World.enemies, TinyBoulder(self:getPosition(), dir))
+      table.insert(World.enemies, TinyBoulder(self:getPosition() + dir * 30, dir))
    end
 
    Sprite.destroy(self)

@@ -11,7 +11,7 @@ struct Vertex1P1UV
     glm::vec2 uv;
 };
 
-Renderer::Renderer(HeapAllocator* heap, dcutil::StackAllocator* perm, dcutil::StackAllocator* world)
+Renderer::Renderer(HeapAllocator* heap)
 {
     this->resolution.x = 1280;
     this->resolution.y = 720;
@@ -40,11 +40,11 @@ Renderer::Renderer(HeapAllocator* heap, dcutil::StackAllocator* perm, dcutil::St
     SDL_GetWindowWMInfo(window, &info);
     HWND hwnd = info.info.win.window;
     
-    this->renderCtx = new(perm->alloc(sizeof(dcfx::Context))) dcfx::Context(hwnd, heap);
-    this->spritebatch = new(perm->alloc(sizeof(SpriteBatch)))  SpriteBatch(renderCtx);
-    this->linerenderer = new(perm->alloc(sizeof(LineRenderer)))  LineRenderer(renderCtx);
-    this->particle = new(perm->alloc(sizeof(ParticleEngine))) ParticleEngine(world, renderCtx, spritebatch);
-    
+    this->renderCtx = new(g_permStackAllocator->alloc(sizeof(dcfx::Context))) dcfx::Context(hwnd, heap);
+    this->spritebatch = new(g_permStackAllocator->alloc(sizeof(SpriteBatch)))  SpriteBatch(renderCtx);
+    this->linerenderer = new(g_permStackAllocator->alloc(sizeof(LineRenderer)))  LineRenderer(renderCtx);
+    this->particle = new(g_permStackAllocator->alloc(sizeof(ParticleEngine))) ParticleEngine(g_gameStackAllocator,
+											     renderCtx, spritebatch);    
     Vertex1P1UV* verts = (Vertex1P1UV*)renderCtx->frameAlloc(4 * sizeof(Vertex1P1UV));
     verts[0].pos = glm::vec3(-1.0f, -1.0f, 0.0f);
     verts[1].pos = glm::vec3(+1.0f, -1.0f, 0.0f);
@@ -161,9 +161,15 @@ void Renderer::setPostProcessParams(float blurSigma, float blurTapSize, float ex
 void Renderer::write(const char* text, const glm::vec2& position, bool32 inWorld)
 {
     if(inWorld)
+    {
 	bufferedTextInWorld.push_back({ text, position });
+    }
     else
-	bufferedText.push_back({ text, position });
+    {
+        glm::vec2 positionViewport = position * (glm::vec2)resolution;
+	
+	bufferedText.push_back({ text, positionViewport });
+    }
 }
 
 void Renderer::render(World* world)

@@ -194,7 +194,9 @@ ProfileRecord g_counters[VOIDSTORM_PROFILE_NUM_COUNTERS];
 tinystl::vector<LuaFile>* g_luaFiles;
 #endif
 
-HeapAllocator* g_allocator;
+dcutil::StackAllocator* g_permStackAllocator;
+dcutil::StackAllocator* g_gameStackAllocator;
+HeapAllocator* g_heapAllocator;
 
 int main(int argv, char** argc)
 {
@@ -207,54 +209,58 @@ int main(int argv, char** argc)
     GameMemory gameMemory = {};
     initializeMemory(&gameMemory);
 
-    {    
-	mspace appSpace = create_mspace_with_base(gameMemory.permanentStorage, VOIDSTORM_APPLICATION_HEAP_SIZE, 0);
-	mspace renderSpace = create_mspace_with_base((uint8_t*)gameMemory.permanentStorage + VOIDSTORM_APPLICATION_HEAP_SIZE, VOIDSTORM_RENDER_HEAP_SIZE, 0);
-
-	HeapAllocator globalAllocator(appSpace);
-	g_allocator = &globalAllocator;
-
+    {
+	// Create permanent stack memory which is freed at shutdown
 	uint8_t* permStackPtr = (uint8_t*)gameMemory.permanentStorage + VOIDSTORM_APPLICATION_HEAP_SIZE + VOIDSTORM_RENDER_HEAP_SIZE;	
-	dcutil::StackAllocator* permanentStack = new(permStackPtr) dcutil::StackAllocator(
-	    permStackPtr + sizeof(dcutil::StackAllocator),
-	    VOIDSTORM_APPLICATION_PERMANENT_STACK_SIZE);
+	dcutil::StackAllocator* permStackAllocator = new(permStackPtr) dcutil::StackAllocator(permStackPtr + sizeof(dcutil::StackAllocator), VOIDSTORM_APPLICATION_PERMANENT_STACK_SIZE);
+	g_permStackAllocator = permStackAllocator;
 
-	uint8_t* worldStackPtr = (uint8_t*)permStackPtr + VOIDSTORM_APPLICATION_PERMANENT_STACK_SIZE;
-	dcutil::StackAllocator* worldStack = new(worldStackPtr) dcutil::StackAllocator(worldStackPtr + sizeof(dcutil::StackAllocator),
-										       VOIDSTORM_APPLICATION_WORLD_STACK_SIZE);
-
-	HeapAllocator renderAllocator(renderSpace);	
-	Renderer* renderer = new(permanentStack->alloc(sizeof(Renderer))) Renderer(&renderAllocator, permanentStack, worldStack);
+	// Create game stack memory which is freed when reloading the game
+	uint8_t* gameStackPtr = (uint8_t*)permStackPtr + VOIDSTORM_APPLICATION_PERMANENT_STACK_SIZE;
+	dcutil::StackAllocator* gameStackAllocator = new(gameStackPtr) dcutil::StackAllocator(gameStackPtr + sizeof(dcutil::StackAllocator), VOIDSTORM_APPLICATION_WORLD_STACK_SIZE);
+	g_gameStackAllocator = gameStackAllocator;
 	
-	World* world = new(permanentStack->alloc(sizeof(World))) World(permanentStack);
+	// Create global heap allocator
+	mspace globalSpace = create_mspace_with_base(gameMemory.permanentStorage, VOIDSTORM_APPLICATION_HEAP_SIZE, 0);
+	HeapAllocator globalHeapAllocator(globalSpace);
+	g_heapAllocator = &globalHeapAllocator;
+
+	// Create render heap allocator
+	mspace renderSpace = create_mspace_with_base((uint8_t*)gameMemory.permanentStorage + VOIDSTORM_APPLICATION_HEAP_SIZE, VOIDSTORM_RENDER_HEAP_SIZE, 0);
+	HeapAllocator renderHeapAllocator(renderSpace);	
+	Renderer* renderer = new(permStackAllocator->alloc(sizeof(Renderer))) Renderer(&renderHeapAllocator);
+
+	// World is a collection of managers where entities and components live
+	World* world = new(permStackAllocator->alloc(sizeof(World))) World;
 	world->transforms.allocate(VOIDSTORM_TRANSFORM_COMPONENT_COUNT);
 	world->physics.allocate(VOIDSTORM_PHYSICS_COMPONENT_COUNT);
 	world->collisions.allocate(VOIDSTORM_COLLISION_COMPONENT_COUNT);
 	world->responders.allocate(VOIDSTORM_RESPONDER_COMPONENT_COUNT);
 	world->sprites.allocate(VOIDSTORM_SPRITE_COMPONENT_COUNT);
 
-	ResourceManager* resources = new(permanentStack->alloc(sizeof(ResourceManager))) ResourceManager(permanentStack, renderer->getContext());
+	// Resource manager is a collection of managers for loading data of disk
+	ResourceManager* resources = new(permStackAllocator->alloc(sizeof(ResourceManager))) ResourceManager(permStackAllocator, renderer->getContext());
 
 #ifdef VOIDSTORM_INTERNAL
 	tinystl::vector<LuaFile> luaFiles;
 	g_luaFiles = &luaFiles;
 #endif
-    
+
+	// Create the lua state and pass in the custom allocators
 	LuaAllocatorUserData allocatorUd;
-	allocatorUd.pool = new(permanentStack->alloc(sizeof(dcutil::PoolAllocator))) dcutil::PoolAllocator(
-	    permanentStack->alloc(VOIDSTORM_SCRIPT_ELEMENT_SIZE * VOIDSTORM_SCRIPT_ELEMENT_COUNT),
+	allocatorUd.ms = globalSpace;
+	allocatorUd.pool = new(permStackAllocator->alloc(sizeof(dcutil::PoolAllocator))) dcutil::PoolAllocator(
+	    permStackAllocator->alloc(VOIDSTORM_SCRIPT_ELEMENT_SIZE * VOIDSTORM_SCRIPT_ELEMENT_COUNT),
 	    VOIDSTORM_SCRIPT_ELEMENT_SIZE,
 	    VOIDSTORM_SCRIPT_ELEMENT_COUNT);
 	
-	allocatorUd.ms = appSpace;
-    
 	lua_State* luaState = lua_newstate(LuaAllocatorCallback, &allocatorUd);    
 	luaL_openlibs(luaState);
 
+	// Initialize the lua bridge 
 	api::initialize(luaState);
 
-	setupContactCallbacks();
-	
+	// Initialize input structs
 	Controller activeController;  
 	GameInput gameInput;
 	gameInput.currentKeyboard = &gameInput.keyboards[0];
@@ -268,10 +274,11 @@ int main(int argv, char** argc)
 	context.input = &gameInput;
 	context.world = world;
 
+	// Attempt to initialize the game
 	bool error = false;
 	do
 	{
-	    worldStack->reset();
+	    gameStackAllocator->reset();
 	    world->reset();
 	    renderer->getParticleEngine()->reset();
 	    
@@ -317,13 +324,15 @@ int main(int argv, char** argc)
 	} while (error);
 
 	State state = State::RUNNING;
-	
+
+#ifdef VOIDSTORM_INTERNAL
 	RecordingState rstate;
 	if(!setupRecordingState(&gameMemory, &rstate))
 	{
 	    PRINT("Failed to setup recording state.\n");
 	    state = State::QUIT;
 	}
+#endif	
 
 	uint64_t frameCounter = 0;
 	uint64_t prevTime = SDL_GetPerformanceCounter();
@@ -335,12 +344,6 @@ int main(int argv, char** argc)
 	    gameInput.dt = (float)((currentTime - prevTime) / (double)SDL_GetPerformanceFrequency());
 	    prevTime = currentTime;
 
-		//printf("dt %f\n", gameInput.dt);
-
-	    //gameInput.currentController->rightStickX = 0.0f;
-	    //gameInput.currentController->rightStickY = 0.0f;
-	    //gameInput.dt = 1 / 60.0f;
-	    
 	    state = handleEvents(gameInput.currentController, &activeController, renderer);
 
 	    gameInput.currentController->A.isPressed = SDL_GameControllerGetButton(activeController.pad, SDL_CONTROLLER_BUTTON_A);
@@ -378,8 +381,7 @@ int main(int argv, char** argc)
 
 	    if(isKeyDownAndReleased(&gameInput, SDL_SCANCODE_R))
 	    {
-		worldStack->reset();
-		
+	        gameStackAllocator->reset();
 		world->reset();
 		renderer->getParticleEngine()->reset();
 		
@@ -402,7 +404,7 @@ int main(int argv, char** argc)
 	    {
 		if(playbackInput(&gameMemory, &rstate, &gameInput))
 		{
-		    // NOTE (daniel): Reload the script files incase the scripts are modified during playback
+		    // Reload the script files incase the scripts are modified during playback
 		    for (size_t i = 0; i < luaFiles.size(); ++i)
 		    {
 			LuaFile& file = luaFiles[i];
@@ -514,14 +516,8 @@ int main(int argv, char** argc)
 		ProfileRecord record = g_counters[i];
 
 		sprintf(messageOutput, "%s - %f ms", record.name, record.time);
-		renderer->write(messageOutput, glm::vec2(1000, 20 * i + 10), false);
+		renderer->write(messageOutput, glm::vec2(0.8f, 0.025f * i + 0.01f), false);
 	    }
-
-	    int a = (int)permanentStack->getAllocatedSize() / Megabytes(1);
-	    int b = (int)permanentStack->m_size / Megabytes(1);
-	
-	    sprintf(messageOutput, "Permanent Stack Used:%d Mb Size:%d Mb %0.2f%%\n", a, b, (a/(float)b)*100.0f);
-	    renderer->write(messageOutput, glm::vec2(500, 10), false);
 #endif
 	    
 	    KeyboardState* ktemp = gameInput.currentKeyboard;

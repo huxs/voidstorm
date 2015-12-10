@@ -21,6 +21,7 @@ Texture* TextureManager::load(const char* name)
 	    if (read == 1)
 	    {
 		dcfx::ImageInfo info;
+		info.m_isSRGB = true;
 		dcfx::TextureHandle handle = renderCtx->createTexture(ptr, size, info);
 		if(handle.index != dcfx::InvalidHandle)
 		{
@@ -96,7 +97,7 @@ void TextureManager::clean()
     }
 }
 
-static void storeEffectParams(ParticleEffectDescription* effect, lua_State* luaState, dcutil::StackAllocator* arena)
+static void storeEffectParams(ParticleEffectDescription* effect, lua_State* luaState, dcutil::StackAllocator* stack)
 {
     lua_getfield(luaState, 1, "emitters");
 
@@ -106,7 +107,7 @@ static void storeEffectParams(ParticleEffectDescription* effect, lua_State* luaS
 
     if(effect->emitter == nullptr)
     {
-        effect->emitter = (ParticleEmitterDescription*)arena->alloc(sizeof(ParticleEmitterDescription));
+        effect->emitter = (ParticleEmitterDescription*)stack->alloc(sizeof(ParticleEmitterDescription));
     }
     
     ParticleEmitterDescription* emitter = effect->emitter;
@@ -202,7 +203,7 @@ static void storeEffectParams(ParticleEffectDescription* effect, lua_State* luaS
 	lua_pop(luaState, 1);
 
 	if(emitter->next == nullptr)
-	    emitter->next = (ParticleEmitterDescription*)arena->alloc(sizeof(ParticleEmitterDescription));
+	    emitter->next = (ParticleEmitterDescription*)stack->alloc(sizeof(ParticleEmitterDescription));
 	
 	emitter = emitter->next;
     }

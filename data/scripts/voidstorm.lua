@@ -5,6 +5,8 @@ function GameInitialize()
    dofile "particles.lua"
    dofile "debug.lua"   
    
+   sprites = {}
+
    World = {}
    dofile "world.lua"
 
