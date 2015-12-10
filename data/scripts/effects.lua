@@ -156,3 +156,26 @@ spiral_emitter.depthMax = 2
 spiral_emitter.rotationMin = 0.0
 spiral_emitter.rotationMax = 0.0
 spiral:store()
+
+test2 = ParticleEffect("test2")
+test2_emitter = test2:addEmitter()
+test2_emitter.bufferSizeTier = bufferSizeTier.high
+test2_emitter.particlesPerEmit = 1
+test2_emitter.spawntime = 0.15
+test2_emitter.lifetimeMin = 1.0
+test2_emitter.lifetimeMax = 1.0
+test2_emitter.relative = true
+test2_emitter.spread = 0
+test2_emitter.position = vec2.new(45, 0)
+test2_emitter.force = vec2.new(10, 1)
+test2_emitter.texture = texture.new("diamond.dds")
+test2_emitter.sizeMin = 0.5
+test2_emitter.sizeMax = 0.5
+test2_emitter.rotationMin = 0.0
+test2_emitter.rotationMax = 0.0
+test2_emitter.colorMin = color.new(1,1,1,1)
+test2_emitter.colorMax = color.new(1,1,1,1)
+test2_emitter.startColor = color.new(1,1,1,1)
+test2_emitter.endColor = color.new(1,1,1,1)
+test2:store()
+

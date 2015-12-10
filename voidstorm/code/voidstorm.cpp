@@ -496,7 +496,7 @@ int main(int argv, char** argc)
 		}
 	    }
 
-	    simulate(world, gameInput.dt);
+	    simulate(world, gameInput.dt, renderer->getLineRenderer());
 
 	    renderer->getParticleEngine()->update(gameInput.dt);
 

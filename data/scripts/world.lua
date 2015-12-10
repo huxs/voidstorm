@@ -17,13 +17,13 @@ function World.initialize()
    type.enemy = bit.lshift(1, 2)
    type.enemybullet = bit.lshift(1, 3)
    type.wall = bit.lshift(1, 4)
+   type.ray = bit.lshift(1, 5)
   
    -- Preload the texture to be used
    wallTexture = texture.new("pixel.dds")
    boulderTexture = texture.new("boulder.dds")
    wheelTexture = texture.new("wheel.dds")
    diamondTexture = texture.new("diamond.dds")
-
    
    World.enemies = {}
    World.size = vec2.new(3000, 3000)
@@ -99,21 +99,48 @@ function World.start()
    -- Spawn enemies
    math.randomseed(os.time())
 
-   for i = 0, 16 do
-      table.insert(World.enemies, Worm(vec2.new(math.random() * World.size.x,
-						math.random() * World.size.y), 16))
-
+   for i = 0, 8 do
+      --table.insert(World.enemies, Worm(vec2.new(math.random() * World.size.x,
+						--math.random() * World.size.y), 16))
    end
 
-   for i = 0, 64 do
-
-      table.insert(World.enemies, Boulder(vec2.new(math.random() * World.size.x,
-						   math.random() * World.size.y)))
+   for i = 0, 32 do
+      --table.insert(World.enemies, Boulder(vec2.new(math.random() * World.size.x,
+						   --math.random() * World.size.y)))
    end
+
+   World.time = 0
+
+   -- Ray entity
+   Ray = {}
+   Ray.entity = es.createEntity()
+   Ray.dir = vec2.new(1,0)
+   es.setPosition(Ray.entity, vec2.new(1000, 1000))
+   es.addCollision(Ray.entity, type.ray, type.player) -- Example: Is the ray blocked by an enemy
+   es.setRayShape(Ray.entity, Ray.dir)
+   es.addResponder(Ray.entity)
 
 end
 
 function World.update()
+
+   World.time = World.time + dt * 1.0 * math.pi
+
+   -- Animate ray
+   Ray.dir = vec2.new(math.cos(-World.time), math.sin(-World.time))
+   es.setDirection(Ray.entity, Ray.dir)
+
+   local collidedEntities = es.getCollidedEntity(Ray.entity)
+   for i = #collidedEntities, 1, -1 do
+      
+      local entity = collidedEntities[i][1]
+      local pos = collidedEntities[i][2]
+      local sprite = sprites[entity]
+
+      if sprite ~= nil then	 
+	 print("Sound the alarm")
+      end
+   end
 
    -- Disco walls
    local hsv = color.toHSVFromRGB(World.lw:getColor()) + color.new(60 * dt, 0, 0, 0)

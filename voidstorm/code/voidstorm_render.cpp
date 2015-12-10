@@ -3,7 +3,7 @@
 const float Renderer::GaussBlurSigma = 3.0f;
 const float Renderer::GaussBlurTapSize = 1.0f;
 const float Renderer::Exposure = 0.0f;
-const float Renderer::ZoomFactor = 1.0f;
+const float Renderer::ZoomFactor = 0.5f;
 
 struct Vertex1P1UV
 {

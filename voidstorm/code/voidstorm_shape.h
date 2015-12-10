@@ -7,6 +7,7 @@ enum ShapeType
 {
     POLYGON,
     CIRCLE,
+    RAY,
     NONE
 };
 
@@ -28,4 +29,9 @@ struct PolygonShape
 struct CircleShape
 {
     float radius;
+};
+
+struct RayShape
+{
+    glm::vec2 direction;
 };

@@ -5,10 +5,7 @@
   - x86 libs for utility/render.
   - opengl_glx for linux compabillity.
   - camera entities would be pretty cool.
-  - Optimization: Following of entities is very slow in lua 5x128 follow entities -> 20 ms (debug)
-  do the math in C instead.
-  - Optimization: Shapes are allocated in runtime, adding and removing shapes is a frequent operation
-  and should not call to OS.
+  - Optimization: Following of entities is very slow in lua 5x128 follow entities -> 20 ms
   - Optimization: SIMD on spritebatching.
   - Set the source rectangle for a sprite.
   - Add shaders and fonts to resource manager.

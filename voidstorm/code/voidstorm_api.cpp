@@ -881,6 +881,24 @@ namespace api
 	return 0;
     }
 
+    static int addRayShape(lua_State* luaState)
+    {
+	VoidstormContext* context = getContext(luaState);
+	Entity entity = { (uint32_t)lua_tointeger(luaState, 1) };
+	glm::vec2 dir = *(glm::vec2*)lua_touserdata(luaState, 2);
+
+	CollisionManager::Instance instance = context->world->collisions.lookup(entity);
+	if(instance.index != 0)
+	{
+	    TransformManager::Instance tinstance = context->world->transforms.lookup(entity);
+	    glm::vec2 position = context->world->transforms.getPosition(tinstance);
+	    
+	    context->world->collisions.createRayShape(instance, dir, position);
+	}
+
+	return 0;
+    }
+
     static int addPolygonShape(lua_State* luaState)
     {
 	VoidstormContext* context = getContext(luaState);
@@ -901,6 +919,8 @@ namespace api
 
 	return 0;
     }
+
+    
 
     static int addResponder(lua_State* luaState)
     {
@@ -965,6 +985,25 @@ namespace api
 	world->collisions.setRadius(instance, radius);
 	return 0;
     }
+
+    static int setDirection(lua_State* luaState)
+    {
+	World* world = getContext(luaState)->world;
+	Entity entity = { (uint32_t)lua_tointeger(luaState, 1) };
+	glm::vec2 direction = *(glm::vec2*)lua_touserdata(luaState, 2);
+
+	CollisionManager::Instance instance = world->collisions.lookup(entity);
+	if(instance.index != 0)
+	{
+	    TransformManager::Instance tinstance = world->transforms.lookup(entity);
+	    glm::vec2 position = world->transforms.getPosition(tinstance);
+	    
+	    world->collisions.setDirection(instance, direction, position);
+	}
+	
+	return 0;
+    }
+    
 
     // TODO (daniel): There is probely a better and cleaner way for passing these results.
     static int getCollidedEntity(lua_State* luaState)
@@ -1204,12 +1243,14 @@ namespace api
 	{ "addCollision", addCollision},
 	{ "setCircleShape", addCircleShape},
 	{ "setPolygonShape", addPolygonShape},
+	{ "setRayShape", addRayShape},
 	{ "addResponder", addResponder},
 	{ "setType", setType},
 	{ "getType", getType},
 	{ "setMask", setMask},
 	{ "setOffset", setOffset},
 	{ "setRadius", setRadius},
+	{ "setDirection", setDirection},
 	{ "getCollidedEntity", getCollidedEntity},
 	{ "setPosition", setPosition},
 	{ "getPosition", getPosition},
