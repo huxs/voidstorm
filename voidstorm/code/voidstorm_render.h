@@ -99,21 +99,23 @@ private:
 
 inline glm::mat4 Renderer::getCameraTransform()
 {
-    /* NOTE: Offsets the origin so that camera position 0,0 looks at center of the viewport.
+    float D = 3000.0f * ZoomFactor;
 
-     */
+    float zf = (2.0f / D) / ((2.0f / resolution.x));
+    
+    /* Offsets the origin so that camera position 0,0 looks at center of the viewport. */
     return glm::mat4(
-	1.0f, 0.0f, 0.0f, 0.0f,
-	0.0f, 1.0f, 0.0f, 0.0f,
+        zf, 0.0f, 0.0f, 0.0f,
+	0.0f, zf, 0.0f, 0.0f,
 	0.0f, 0.0f, 1.0f, 0.0f,
-	-renderCamera.position.x + (resolution.x + (ZoomFactor * resolution.x)) / 2.0f,
-	-renderCamera.position.y + (resolution.y + (ZoomFactor * resolution.y)) / 2.0f, 0.0f, 1.0f
+        -renderCamera.position.x*zf + (resolution.x / 2.0f),
+	-renderCamera.position.y*zf + (resolution.y / 2.0f), 0.0f, 1.0f
 	);
 }
 
 inline glm::mat4 Renderer::getViewportTransform()
 {
-    /* NOTE: Scale the ranges 0 - Width, 0 - Height into the unit cube -1 - 1.
+    /* Scale the ranges 0 - Width, 0 - Height into the unit cube -1 - 1.
        Reverse the y-range. Then offset the range by -1 in x and by 1 in y.
        This makes the following ranges transform into viewport.
 	   
@@ -123,8 +125,8 @@ inline glm::mat4 Renderer::getViewportTransform()
        0,Height     Width,Height */
     
     return glm::mat4(
-	(2.0f / (resolution.x +  (ZoomFactor * resolution.x))), 0.0f, 0.0f, 0.0f,
-	0.0f, (-2.0f / (resolution.y + (ZoomFactor * resolution.y))), 0.0f, 0.0f,
+        2.0f / resolution.x, 0.0f, 0.0f, 0.0f,
+	0.0f, -2.0f / resolution.y, 0.0f, 0.0f,
 	0.0f, 0.0f, 1.0f, 0.0f,
 	-1.0f, 1.0f, 0.0f, 1.0f
 	);

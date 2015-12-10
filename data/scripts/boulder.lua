@@ -41,10 +41,10 @@ end
 function Boulder.destroy(self)
 
    for i = 0, 7 do
-      local angle = ((2 * 3.14) / 8) * i;
+      local angle = ((2 * math.pi) / 8) * i;
       local dir = vec2.new(math.cos(angle), math.sin(angle));
 
-      table.insert(World.enemies, TinyBoulder(self:getPosition(), dir))
+      table.insert(World.enemies, TinyBoulder(self:getPosition() + dir * 30, dir))
    end
 
    Sprite.destroy(self)

@@ -161,9 +161,15 @@ void Renderer::setPostProcessParams(float blurSigma, float blurTapSize, float ex
 void Renderer::write(const char* text, const glm::vec2& position, bool32 inWorld)
 {
     if(inWorld)
+    {
 	bufferedTextInWorld.push_back({ text, position });
+    }
     else
-	bufferedText.push_back({ text, position });
+    {
+        glm::vec2 positionViewport = position * (glm::vec2)resolution;
+	
+	bufferedText.push_back({ text, positionViewport });
+    }
 }
 
 void Renderer::render(World* world)

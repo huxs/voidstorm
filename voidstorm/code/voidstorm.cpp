@@ -516,7 +516,7 @@ int main(int argv, char** argc)
 		ProfileRecord record = g_counters[i];
 
 		sprintf(messageOutput, "%s - %f ms", record.name, record.time);
-		renderer->write(messageOutput, glm::vec2(1000, 20 * i + 10), false);
+		renderer->write(messageOutput, glm::vec2(0.8f, 0.025f * i + 0.01f), false);
 	    }
 #endif
 	    

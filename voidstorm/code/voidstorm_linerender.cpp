@@ -1,8 +1,7 @@
 LineRenderer::LineRenderer(dcfx::Context* _renderCtx)
 	: vertexCount(0), renderCtx(_renderCtx)
 {
-    // TODO: Heap allocate this and make sure we can realloc in runtime.
-    vertices = (LineVertex*)malloc(LineRenderer::BatchSize * sizeof(LineVertex) * 2);
+    vertices = (LineVertex*)g_heapAllocator->alloc(VOIDSTORM_DEBUG_NUM_LINES * sizeof(LineVertex) * 2);
 	
     dcfx::ProgramDesc desc;
     desc.m_vert = loadShader(renderCtx, "line.vert", dcfx::ShaderType::VERTEX);
@@ -16,13 +15,13 @@ LineRenderer::LineRenderer(dcfx::Context* _renderCtx)
 
     vertexBuffer = renderCtx->createVertexBuffer(
 	nullptr,
-	LineRenderer::BatchSize * sizeof(LineVertex) * 2,
+	VOIDSTORM_DEBUG_NUM_LINES * sizeof(LineVertex) * 2,
 	vertexDecl);
 }
 
 LineRenderer::~LineRenderer()
 {
-    free(vertices);
+    g_heapAllocator->free(vertices);
 
     renderCtx->deleteProgram(program);
     renderCtx->deleteBuffer(vertexBuffer);

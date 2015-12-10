@@ -2,8 +2,8 @@
 
 struct LineVertex
 {
-    glm::vec3 m_pos;
-    glm::vec4 m_color;
+    glm::vec3 pos;
+    glm::vec4 color;
 };
 
 class LineRenderer
@@ -21,10 +21,6 @@ public:
     void drawPolygon(const PolygonShape& shape, const glm::vec4& color);
     
 private:
-
-    // TODO: Debug malloc.
-    static const int BatchSize = 75000;
-    
     dcfx::Context* renderCtx;
     dcfx::VertexDecl vertexDecl;
     dcfx::BufferHandle vertexBuffer;

@@ -5,8 +5,8 @@ function debug_view()
 
    fps.update(dt)
    
-   font.write("FPS: " .. tostring(fps.count), vec2.new(10, 30), false)
-   font.write("# Entities: " .. tostring(es.getNrOfEntities()), vec2.new(10, 10), false)
+   font.write("FPS: " .. tostring(fps.count), vec2.new(0.01, 0.04), false)
+   font.write("# Entities: " .. tostring(es.getNrOfEntities()), vec2.new(0.01, 0.01), false)
 
    p = 0
    for i,v in pairs(sprites) do
