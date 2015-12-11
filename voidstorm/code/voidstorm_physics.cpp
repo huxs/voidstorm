@@ -88,7 +88,6 @@ void PhysicsSimulator::simulate(World* world, float dt, LineRenderer* linerender
 	glm::vec2 vel = world->physics.data.velocity[physics.index];
 	glm::vec2 deltaVel = vel * dt;
 
-	bool hit = false;
 	Contact* c = &world->collisions.data.contact[i];
 	while(c)
 	{
@@ -123,7 +122,7 @@ void PhysicsSimulator::simulate(World* world, float dt, LineRenderer* linerender
 		    glm::vec2 otherDeltaVel = vel * dt;
 		    
 		    // Execute collision routine
-		    Manifold manifold = c->callback(world, deltaVel, otherDeltaVel, transform, shapeData, otherTransform, otherShapeData);
+		    Manifold manifold = c->callback(world, glm::vec2(0,0), otherDeltaVel, transform, shapeData, otherTransform, otherShapeData);
 		    if(manifold.numContacts > 0)
 		    {
 			// Callback
@@ -136,13 +135,12 @@ void PhysicsSimulator::simulate(World* world, float dt, LineRenderer* linerender
 			CollisionResponderManager::Instance otherResponder = world->responders.lookup(other_e);
 			if(otherResponder.index != 0)
 			{
-			    world->responders.addEntity(responder, e, manifold.contacts[0].position, manifold.contacts[0].normal);   
+			    world->responders.addEntity(otherResponder, e, manifold.contacts[0].position, manifold.contacts[0].normal);   
 			}
 
 			// If both objects have physics component add the manifold for impulse resolution
 			if(physics.index != 0 && otherPhysics.index != 0)
 			{
-			    hit = true;
 			    assert(numManifolds < ARRAYSIZE(manifolds));
 			    manifold.pinstA = physics;
 			    manifold.pinstB = otherPhysics;		    
@@ -153,28 +151,7 @@ void PhysicsSimulator::simulate(World* world, float dt, LineRenderer* linerender
 	    }
 		
 	    c = c->next;
-	}
-	    
-	// If we never collided with anything move the entity
-	if(!hit)
-	{
-	    newPosition += deltaVel;
-	    
-	    world->transforms.data.position[transform.index] = newPosition;
-	}		
-
-	// If the entity moved perform new broad test
-	glm::vec2 displacement = newPosition - pos;
-	float dispLength = glm::length(displacement);
-	if(dispLength > 0)
-	{
-	    CollisionManager::Instance instance = { i };
-	    DbvtNode* node = world->collisions.data.node[i];
-	    
-	    world->collisions.resetContacts(instance);
-	    world->collisions.addContacts(instance);	    
-	    world->collisions.tree.moveProxy(node, displacement);
-	}	
+	}	    	
     }
 }
 
@@ -191,6 +168,9 @@ void PhysicsSimulator::foo(World* world)
 	
 	glm::vec2 velA = world->physics.data.velocity[physicsA.index];
 	glm::vec2 velB = world->physics.data.velocity[physicsB.index];
+
+	int flagA = world->physics.data.flags[physicsA.index];
+	int flagB = world->physics.data.flags[physicsB.index];
 	
 	glm::vec2 collisionNormal = manifolds[i].contacts[0].normal;
 	
@@ -201,9 +181,12 @@ void PhysicsSimulator::foo(World* world)
 	{
 	    float invMassA = 1.0f / world->physics.data.mass[physicsA.index];
 	    float invMassB = 1.0f / world->physics.data.mass[physicsB.index];
+
+	    float restitutionA = world->physics.data.restitution[physicsA.index];
+	    float restitutionB = world->physics.data.restitution[physicsB.index];
 	    
 	    // restitution
-	    float e = 1.0f; // miniumim of both materials
+	    float e = glm::max(restitutionA, restitutionB);
 
 	    // impulse
 	    float j = -(1.0f + e) * contactVel;
@@ -211,8 +194,42 @@ void PhysicsSimulator::foo(World* world)
 
 	    glm::vec2 impulse = j * collisionNormal;
 
-	    world->physics.data.velocity[physicsA.index] -= invMassA * impulse;
-	    world->physics.data.velocity[physicsB.index] += invMassB * impulse;	    
+	    if(flagA == 0)
+		world->physics.data.velocity[physicsA.index] -= invMassA * impulse;
+
+	    if(flagB == 0)
+		world->physics.data.velocity[physicsB.index] += invMassB * impulse;	    
 	}
+    }
+}
+
+void PhysicsSimulator::asd(World* world, float dt)
+{
+    for(uint32_t i = 1; i < world->physics.data.used; ++i)
+    {
+	Entity e = world->physics.data.entities[i];
+	glm::vec2 vel = world->physics.data.velocity[i];
+	glm::vec2 deltaVel = vel * dt;
+
+	TransformManager::Instance transform = world->transforms.lookup(e);
+	glm::vec2 pos = world->transforms.data.position[transform.index];
+
+	glm::vec2 newPosition = pos + deltaVel;
+	
+	// If the entity moved perform new broad test
+	glm::vec2 displacement = newPosition - pos;
+	float dispLength = glm::length(displacement);
+	if(dispLength > 0)
+	{
+	    CollisionManager::Instance collision = world->collisions.lookup(e);
+	    DbvtNode* node = world->collisions.data.node[collision.index];
+	    
+	    world->collisions.resetContacts(collision);
+	    world->collisions.addContacts(collision);	    
+	    world->collisions.tree.moveProxy(node, displacement);
+
+	    world->transforms.data.position[transform.index] = newPosition;
+	}
+
     }
 }

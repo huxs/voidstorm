@@ -64,9 +64,11 @@ struct PhysicsManager
 	void* data;
 	Entity* entities;
 	float* mass;
+	float* restitution;
 	glm::vec2* force;
 	glm::vec2* acceleration;
-	glm::vec2* velocity;		
+	glm::vec2* velocity;
+	uint32_t* flags;
     } data;
 
     void allocate(uint32_t count);
@@ -75,8 +77,10 @@ struct PhysicsManager
     Instance lookup(Entity e) { return { map.lookup(e) }; };
 
     void setMass(Instance i, float mass) { data.mass[i.index] = mass; }
+    void setRestitution(Instance i, float restitution) { data.restitution[i.index] = restitution; }
     void setForce(Instance i, glm::vec2 force) { data.force[i.index] = force; }
     void setVelocity(Instance i, glm::vec2 velocity) { data.velocity[i.index] = velocity; }
+    void setFlag(Instance i, uint32_t flag) { data.flags[i.index] = flag; }
 
     glm::vec2 getVelocity(Instance i) { return data.velocity[i.index]; }
 

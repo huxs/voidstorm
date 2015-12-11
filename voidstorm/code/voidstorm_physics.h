@@ -21,6 +21,7 @@ struct PhysicsSimulator
 {
     void simulate(World* world, float dt, LineRenderer* linerenderer);
     void foo(World* world);
+    void asd(World* world, float dt);
     
     Manifold manifolds[1024];
     uint32_t numManifolds;

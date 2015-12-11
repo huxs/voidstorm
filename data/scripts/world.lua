@@ -47,26 +47,34 @@ function World.start()
    player = Player(vec2.new(World.size.x / 2, World.size.y / 2))
 
    -- Create wall entities
-   World.lw = CollidableSprite(vec2.new(-World.wall_width, 0), type.wall, 0)
+   World.lw = MovableCollidableSprite(vec2.new(-World.wall_width, 0), type.wall, 0)
    World.lw:setOrigin(vec2.new(0, 0))
    World.lw:setTexture(wallTexture)
    World.lw:setSize(vec2.new(World.wall_width, World.size.y))
    World.lw:setColor(color.toRGBFromHSV(color.new(0,1,1,1)))
+   World.lw:setDisabled(true)
+   World.lw:setRestitution(2.0)
 
-   World.bw = CollidableSprite(vec2.new(-World.wall_width, World.size.y), type.wall, 0)
+   World.bw = MovableCollidableSprite(vec2.new(-World.wall_width, World.size.y), type.wall, 0)
    World.bw:setOrigin(vec2.new(0, 0))
    World.bw:setTexture(wallTexture)
    World.bw:setSize(vec2.new(World.size.x + 2 * World.wall_width, World.wall_width))
+   World.bw:setDisabled(true)
+   World.bw:setRestitution(2.0)
 
-   World.rw = CollidableSprite(vec2.new(World.size.x, -World.wall_width), type.wall, 0)
+   World.rw = MovableCollidableSprite(vec2.new(World.size.x, -World.wall_width), type.wall, 0)
    World.rw:setOrigin(vec2.new(0, 0))
    World.rw:setTexture(wallTexture)
    World.rw:setSize(vec2.new(World.wall_width, World.size.y + 2 * World.wall_width))
+   World.rw:setDisabled(true)
+   World.rw:setRestitution(2.0)
 
-   World.tw = CollidableSprite(vec2.new(-World.wall_width, -World.wall_width), type.wall, 0)
+   World.tw = MovableCollidableSprite(vec2.new(-World.wall_width, -World.wall_width), type.wall, 0)
    World.tw:setOrigin(vec2.new(0, 0))
    World.tw:setTexture(wallTexture)
    World.tw:setSize(vec2.new(World.size.x + 2 * World.wall_width, World.wall_width))
+   World.tw:setDisabled(true)
+   World.tw:setRestitution(2.0)
    
    es.setPolygonShape(World.lw.entity,
 		      4, 
@@ -99,12 +107,12 @@ function World.start()
    -- Spawn enemies
    math.randomseed(os.time())
 
-   for i = 0, 2 do
+   for i = 0, 16 do
       table.insert(World.enemies, Worm(vec2.new(math.random() * World.size.x,
 						math.random() * World.size.y), 16))
    end
 
-   for i = 0, 12 do
+   for i = 0, 64 do
       table.insert(World.enemies, Boulder(vec2.new(math.random() * World.size.x,
 						   math.random() * World.size.y)))
    end

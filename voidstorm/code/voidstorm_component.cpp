@@ -141,8 +141,8 @@ void TransformManager::destroy(Instance i)
 
 void PhysicsManager::allocate(uint32_t count)
 {
-    size_t size = count * (sizeof(Entity) +  sizeof(float) + sizeof(glm::vec2)
-			   + sizeof(glm::vec2) + sizeof(glm::vec2));
+    size_t size = count * (sizeof(Entity) +  sizeof(float) + sizeof(float) + sizeof(glm::vec2)
+			   + sizeof(glm::vec2) + sizeof(glm::vec2) + sizeof(uint32_t));
     
     data.data  = g_permStackAllocator->alloc(size);
     data.count = count;
@@ -150,9 +150,11 @@ void PhysicsManager::allocate(uint32_t count)
 
     data.entities = (Entity*)data.data;
     data.mass = (float*)(data.entities + count);
-    data.force = (glm::vec2*)(data.mass + count);
+    data.restitution = (float*)(data.mass + count);
+    data.force = (glm::vec2*)(data.restitution + count);
     data.acceleration = (glm::vec2*)(data.force + count);
     data.velocity = (glm::vec2*)(data.acceleration + count);
+    data.flags = (uint32_t*)(data.velocity + count);
 
 };
 
@@ -162,9 +164,11 @@ PhysicsManager::Instance PhysicsManager::create(Entity e)
     map.add(g_permStackAllocator, e, compIndex);
     data.entities[compIndex] = e;
     data.mass[compIndex] = 1.0f;
+    data.restitution[compIndex] = 1.0f;
     data.force[compIndex] = glm::vec2(0, 0);
     data.acceleration[compIndex] = glm::vec2(0, 0);
     data.velocity[compIndex] = glm::vec2(0, 0);
+    data.flags[compIndex] = 0;
     
 
     //PRINT("PhysicsComponent created for entity I:%d - G:%d!\n", e.index(), e.generation());
@@ -185,9 +189,11 @@ void PhysicsManager::destroy(Instance i)
 	
     data.entities[i.index] = data.entities[lastIndex];
     data.mass[i.index] = data.mass[lastIndex];
+    data.restitution[i.index] = data.restitution[lastIndex];
     data.force[i.index] = data.force[lastIndex];
     data.acceleration[i.index] = data.acceleration[lastIndex];
     data.velocity[i.index] = data.velocity[lastIndex];
+    data.flags[i.index] = data.flags[lastIndex];
 
     map.remove(e);
     map.remove(last_e);

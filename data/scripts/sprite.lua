@@ -187,9 +187,21 @@ function MovableCollidableSprite.new(self, pos, type, mask, radius)
 
 end
 
+function MovableCollidableSprite:setDisabled(isDisabled)
+
+   es.setDisabled(self.entity, isDisabled)
+
+end
+
 function MovableCollidableSprite:setMass(mass)
 
    es.setMass(self.entity, mass)
+
+end
+
+function MovableCollidableSprite:setRestitution(restitution)
+
+   es.setRestitution(self.entity, restitution)
 
 end
 

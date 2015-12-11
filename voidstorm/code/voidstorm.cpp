@@ -503,6 +503,7 @@ int main(int argv, char** argc)
 
 	    simulator->simulate(world, gameInput.dt, renderer->getLineRenderer());
 	    simulator->foo(world);
+	    simulator->asd(world, gameInput.dt);
 
 	    renderer->getParticleEngine()->update(gameInput.dt);
 

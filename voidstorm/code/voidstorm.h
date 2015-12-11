@@ -2,19 +2,20 @@
 
 /*
   TODO (daniel):
-  - x86 libs for utility/render.
-  - opengl_glx for linux compabillity.
-  - camera entities would be pretty cool.
+  - x86 libs for utility/render
+  - opengl_glx for linux compabillity
+  - camera entities would be pretty cool
   - Optimization: Following of entities is very slow in lua 5x128 follow entities -> 20 ms
-  - Optimization: SIMD on spritebatching.
-  - Set the source rectangle for a sprite.
-  - Add shaders and fonts to resource manager.
-  - Better debug view. Add voidstorm_debug.cpp. / Tweak debug variables from lua.
+  - Optimization: SIMD on spritebatching
+  - Set the source rectangle for a sprite
+  - Add shaders and fonts to resource manager
+  - Better debug view. Add voidstorm_debug.cpp. / Tweak debug variables from lua
+  - Polygons have their vertices in world space and wont be moved by transform
   
   TODO (daniel): *Potential Future*
-  - CRT-Emulation mode.
+  - CRT-Emulation mode
   - Android (Touch Input etc..)
-  - Polygon-Particle / Splines / Swirling particles.
+  - Polygon-Particle / Splines / Swirling particles
   - Concave polygons (Multple convex per entity..)
   - Audio!
   - Menus! 

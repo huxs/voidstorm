@@ -863,6 +863,20 @@ namespace api
 	return 0;
     }
 
+    static int setDisabled(lua_State* luaState)
+    {
+	World* world = getContext(luaState)->world;
+	Entity entity = { (uint32_t)lua_tointeger(luaState, 1) };
+	bool32 isDisabled = lua_toboolean(luaState, 2);
+
+	PhysicsManager::Instance instance = world->physics.lookup(entity);
+	if(instance.index != 0)
+	{
+	    world->physics.setFlag(instance, (uint32_t)isDisabled);
+	}
+	return 0;
+    }
+    
     static int addCircleShape(lua_State* luaState)
     {
 	VoidstormContext* context = getContext(luaState);
@@ -1201,6 +1215,16 @@ namespace api
 	return 0;
     }
 
+    static int setRestitution(lua_State* luaState)
+    {
+	World* world = getContext(luaState)->world;
+	PhysicsManager::Instance instance = world->physics.lookup({ (uint32_t)lua_tointeger(luaState, 1) });
+	float restitution = (float)lua_tonumber(luaState, 2);
+
+	world->physics.setRestitution(instance, restitution);
+	return 0;
+    }
+    
     static int setForce(lua_State* luaState)
     {
 	World* world = getContext(luaState)->world;
@@ -1241,6 +1265,7 @@ namespace api
 	{ "addSprite", addSprite},
 	{ "addPhysics", addPhysics},
 	{ "addCollision", addCollision},
+	{ "setDisabled", setDisabled},
 	{ "setCircleShape", addCircleShape},
 	{ "setPolygonShape", addPolygonShape},
 	{ "setRayShape", addRayShape},
@@ -1266,6 +1291,7 @@ namespace api
 	{ "setColor", setColor},
 	{ "getColor", getColor},
 	{ "setMass", setMass},
+	{ "setRestitution", setRestitution },
 	{ "addForce", setForce}, // TODO (daniel): Change scripts to use setForce
 	{ "setVelocity", setVelocity},
 	{ "getVelocity", getVelocity},
