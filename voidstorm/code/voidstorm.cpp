@@ -230,6 +230,9 @@ int main(int argv, char** argc)
 	HeapAllocator renderHeapAllocator(renderSpace);	
 	Renderer* renderer = new(permStackAllocator->alloc(sizeof(Renderer))) Renderer(&renderHeapAllocator);
 
+	// Create physics simulator
+	PhysicsSimulator* simulator = new(permStackAllocator->alloc(sizeof(PhysicsSimulator))) PhysicsSimulator;
+	
 	// World is a collection of managers where entities and components live
 	World* world = new(permStackAllocator->alloc(sizeof(World))) World;
 	world->transforms.allocate(VOIDSTORM_TRANSFORM_COMPONENT_COUNT);
@@ -498,7 +501,8 @@ int main(int argv, char** argc)
 		}
 	    }
 
-	    simulate(world, gameInput.dt, renderer->getLineRenderer());
+	    simulator->simulate(world, gameInput.dt, renderer->getLineRenderer());
+	    simulator->foo(world);
 
 	    renderer->getParticleEngine()->update(gameInput.dt);
 

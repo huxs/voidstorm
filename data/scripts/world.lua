@@ -99,14 +99,14 @@ function World.start()
    -- Spawn enemies
    math.randomseed(os.time())
 
-   for i = 0, 8 do
-      --table.insert(World.enemies, Worm(vec2.new(math.random() * World.size.x,
-						--math.random() * World.size.y), 16))
+   for i = 0, 2 do
+      table.insert(World.enemies, Worm(vec2.new(math.random() * World.size.x,
+						math.random() * World.size.y), 16))
    end
 
-   for i = 0, 32 do
-      --table.insert(World.enemies, Boulder(vec2.new(math.random() * World.size.x,
-						   --math.random() * World.size.y)))
+   for i = 0, 12 do
+      table.insert(World.enemies, Boulder(vec2.new(math.random() * World.size.x,
+						   math.random() * World.size.y)))
    end
 
    World.time = 0

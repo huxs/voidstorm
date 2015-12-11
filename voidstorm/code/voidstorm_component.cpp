@@ -55,12 +55,12 @@ void ComponentMap::remove(Entity entity)
     } while(node);
 }
 
-int ComponentMap::lookup(Entity entity)
+uint32_t ComponentMap::lookup(Entity entity)
 {
     int hash = dcutil::sdbm32((char*)&entity.id, sizeof(entity.id));
     int slot = hash & (ARRAYSIZE(map)-1);
 
-    int value = 0;
+    uint32_t value = 0;
     Node* node = map + slot;
     do
     {
@@ -97,7 +97,7 @@ void TransformManager::allocate(uint32_t count)
 
 TransformManager::Instance TransformManager::create(Entity e)
 {
-    int compIndex = data.used++;	
+    uint32_t compIndex = data.used++;	
     map.add(g_permStackAllocator, e, compIndex);
     
     data.entities[compIndex] = e;
@@ -158,7 +158,7 @@ void PhysicsManager::allocate(uint32_t count)
 
 PhysicsManager::Instance PhysicsManager::create(Entity e)
 {
-    int compIndex = data.used++;	
+    uint32_t compIndex = data.used++;	
     map.add(g_permStackAllocator, e, compIndex);
     data.entities[compIndex] = e;
     data.mass[compIndex] = 1.0f;
@@ -214,7 +214,7 @@ void CollisionResponderManager::allocate(uint32_t count)
 
 CollisionResponderManager::Instance CollisionResponderManager::create(Entity e)
 {
-    int compIndex = data.used++;
+    uint32_t compIndex = data.used++;
     map.add(g_permStackAllocator, e, compIndex);
     data.entities[compIndex] = e;
 
@@ -254,6 +254,18 @@ void CollisionResponderManager::destroy(Instance i)
     //PRINT("Components used: %d\n", data.used);
 }
 
+void CollisionResponderManager::addEntity(Instance i, Entity e, const glm::vec2& position, const glm::vec2& normal)
+{    
+    int index = data.collidedWith[i.index].entityCount;
+    if(index < ARRAYSIZE(data.collidedWith[i.index].entity))
+    {    
+	data.collidedWith[i.index].entity[index] = e;
+	data.collidedWith[i.index].position[index] = position;
+	data.collidedWith[i.index].normal[index] = normal;
+
+	data.collidedWith[i.index].entityCount++;
+    }
+}  
 
 void SpriteManager::allocate(uint32_t count)
 {
@@ -272,7 +284,7 @@ void SpriteManager::allocate(uint32_t count)
 
 SpriteManager::Instance SpriteManager::create(Entity e)
 {
-    int compIndex = data.used++;	
+    uint32_t compIndex = data.used++;	
     map.add(g_permStackAllocator, e, compIndex);
 	
     data.entities[compIndex] = e;

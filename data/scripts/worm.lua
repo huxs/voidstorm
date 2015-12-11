@@ -3,7 +3,7 @@ function WormPart.new(self, pos, index, parent)
    self.parent = parent
    self.index = index
 
-   CollidableSprite.new(self, pos, type.enemy, bit.bor(type.wall, type.enemy, type.player))
+   MovableCollidableSprite.new(self, pos, type.enemy, bit.bor(type.wall, type.enemy, type.player))
 
    self:setCircleShape(20)
    self:setTextureAndSize(diamondTexture)

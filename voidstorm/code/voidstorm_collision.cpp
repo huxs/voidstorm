@@ -311,9 +311,10 @@ int Dbvt::query(DbvtNode* node, Contact* contacts)
   
 CONTACT_CALLBACK* g_contactCallbacks[ShapeType::NONE][ShapeType::NONE];
 
-static ContactResult circleVsRay(World* world, glm::vec2 deltaVel, glm::vec2 otherDeltaVel, TransformManager::Instance transformA, CollisionManager::ShapeData shapeA, TransformManager::Instance transformB, CollisionManager::ShapeData shapeB)
+/*
+static Manifold circleVsRay(World* world, glm::vec2 deltaVel, glm::vec2 otherDeltaVel, TransformManager::Instance transformA, CollisionManager::ShapeData shapeA, TransformManager::Instance transformB, CollisionManager::ShapeData shapeB)
 {
-    ContactResult result;
+    Manifold result;
 
     glm::vec2 offset = shapeA.offset;
     glm::vec2 otherOffset = shapeB.offset;
@@ -373,15 +374,20 @@ static ContactResult circleVsRay(World* world, glm::vec2 deltaVel, glm::vec2 oth
     return result;
 }
 
+
 static ContactResult rayVsCircle(World* world, glm::vec2 deltaVel, glm::vec2 otherDeltaVel, TransformManager::Instance transformA, CollisionManager::ShapeData shapeA, TransformManager::Instance transformB, CollisionManager::ShapeData shapeB)
 {
     return circleVsRay(world, otherDeltaVel, deltaVel, transformB, shapeB, transformA, shapeA);
 }
+*/
 
-static ContactResult circleVsCircle(World* world, glm::vec2 deltaVel, glm::vec2 otherDeltaVel, TransformManager::Instance transformA, CollisionManager::ShapeData shapeA, TransformManager::Instance transformB, CollisionManager::ShapeData shapeB)
+
+static Manifold circleVsCircle(World* world, glm::vec2 deltaVel, glm::vec2 otherDeltaVel, TransformManager::Instance transformA, CollisionManager::ShapeData shapeA, TransformManager::Instance transformB, CollisionManager::ShapeData shapeB)
 {
-    ContactResult result;
-
+    Manifold result;
+    result.instA = transformA;
+    result.instB = transformB;
+    
     glm::vec2 offset = shapeA.offset;
     glm::vec2 otherOffset = shapeB.offset;
     
@@ -405,18 +411,22 @@ static ContactResult circleVsCircle(World* world, glm::vec2 deltaVel, glm::vec2 
     {
 	float t = (scaledRadius + otherScaledRadius) - distance;
 	
-	result.hit = true;			        
-	result.normal = glm::normalize(center - otherCenter);
-	result.position = center + t * result.normal;	
+	result.numContacts = 1;		        
+	result.contacts[0].normal = glm::normalize(center - otherCenter);
+	result.contacts[0].position = center + t * result.contacts[0].normal;	
     }
     
     return result;
 }
 
-static ContactResult circleVsPolygon(World* world, glm::vec2 deltaVel, glm::vec2 otherDeltaVel, TransformManager::Instance transformA, CollisionManager::ShapeData shapeA, TransformManager::Instance transformB, CollisionManager::ShapeData shapeB)
-{
-    ContactResult result;
 
+static Manifold circleVsPolygon(World* world, glm::vec2 deltaVel, glm::vec2 otherDeltaVel, TransformManager::Instance transformA, CollisionManager::ShapeData shapeA, TransformManager::Instance transformB, CollisionManager::ShapeData shapeB)
+{
+    Manifold result;
+    result.numContacts = 0;
+    result.instA = transformA;
+    result.instB = transformB;
+    
     glm::vec2 offset = shapeA.offset;
     glm::vec2 otherOffset = shapeB.offset;
 
@@ -462,9 +472,9 @@ static ContactResult circleVsPolygon(World* world, glm::vec2 deltaVel, glm::vec2
     // Center is inside the polygon
     if(separation < VOIDSTORM_EPSILON)
     {
-	result.hit = true;
-	result.normal = polygon->normals[normalIndex];
-	result.position = (v0 + u0 * glm::normalize(v1 - v0)) + result.normal * circle->radius;
+	result.numContacts = 1;
+	result.contacts[0].normal = polygon->normals[normalIndex];
+	result.contacts[0].position = (v0 + u0 * glm::normalize(v1 - v0)) + result.contacts[0].normal * circle->radius;
 	return result;
     }    
 
@@ -475,9 +485,9 @@ static ContactResult circleVsPolygon(World* world, glm::vec2 deltaVel, glm::vec2
 	    return result;
 	}
 
-	result.hit = true;
-	result.normal = glm::normalize(center - v0);
-	result.position = v0 + result.normal * circle->radius;
+	result.numContacts = 1;
+	result.contacts[0].normal = glm::normalize(center - v0);
+	result.contacts[0].position = v0 + result.contacts[0].normal * circle->radius;
     }
     else if(u1 <= 0.0f)
     {
@@ -486,9 +496,9 @@ static ContactResult circleVsPolygon(World* world, glm::vec2 deltaVel, glm::vec2
 	    return result;
 	}
 
-	result.hit = true;
-	result.normal = glm::normalize(center - v1);
-	result.position = v1 + result.normal * circle->radius;
+	result.numContacts = 1;
+	result.contacts[0].normal = glm::normalize(center - v1);
+	result.contacts[0].position = v1 + result.contacts[0].normal * circle->radius;
     }
     else
     {
@@ -499,18 +509,21 @@ static ContactResult circleVsPolygon(World* world, glm::vec2 deltaVel, glm::vec2
 	    return result;
 
 	}
-	
-	result.hit = true;
-	result.normal = polygon->normals[vertexIndex0];
-	result.position = (v0 + u0 * glm::normalize(v1 - v0)) + result.normal * circle->radius;
+
+	result.numContacts = 1;
+	result.contacts[0].normal = polygon->normals[vertexIndex0];
+	result.contacts[0].position = (v0 + u0 * glm::normalize(v1 - v0)) + result.contacts[0].normal * circle->radius;
     }
     
     return result;
 }
 
-static ContactResult stub(World* world, glm::vec2 deltaVel, glm::vec2 otherDeltaVel, TransformManager::Instance transformA, CollisionManager::ShapeData shapeA, TransformManager::Instance transformB, CollisionManager::ShapeData shapeB)
+static Manifold stub(World* world, glm::vec2 deltaVel, glm::vec2 otherDeltaVel, TransformManager::Instance transformA, CollisionManager::ShapeData shapeA, TransformManager::Instance transformB, CollisionManager::ShapeData shapeB)
 {
-    ContactResult result;
+    Manifold result;
+    result.numContacts = 0;
+    result.instA = transformA;
+    result.instB = transformB;
     return result;
 }
 
@@ -526,8 +539,8 @@ CollisionManager::CollisionManager()
     
     g_contactCallbacks[ShapeType::CIRCLE][ShapeType::POLYGON] = circleVsPolygon;
     g_contactCallbacks[ShapeType::POLYGON][ShapeType::CIRCLE] = circleVsPolygon;
-    g_contactCallbacks[ShapeType::RAY][ShapeType::CIRCLE] = rayVsCircle;
-    g_contactCallbacks[ShapeType::CIRCLE][ShapeType::RAY] = circleVsRay;
+    g_contactCallbacks[ShapeType::RAY][ShapeType::CIRCLE] = stub;
+    g_contactCallbacks[ShapeType::CIRCLE][ShapeType::RAY] = stub;
     g_contactCallbacks[ShapeType::RAY][ShapeType::POLYGON] = stub;
     g_contactCallbacks[ShapeType::POLYGON][ShapeType::RAY] = stub;
 }
@@ -565,7 +578,7 @@ void CollisionManager::allocate(uint32_t count)
 
 CollisionManager::Instance CollisionManager::create(Entity e, uint32_t type, uint32_t mask)
 {
-    int compIndex = data.used++;
+    uint32_t compIndex = data.used++;
     map.add(g_permStackAllocator, e, compIndex);
     data.entities[compIndex] = e;
     data.type[compIndex] = type;

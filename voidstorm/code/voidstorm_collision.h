@@ -53,7 +53,7 @@ struct CollisionManager
 
     void reset();
     
-    struct Instance { int index; };
+    struct Instance { uint32_t index; };
 
     struct ShapeData
     {
@@ -117,19 +117,27 @@ struct CollisionManager
     dcutil::PoolAllocator rayPool;;
 };
 
-struct ContactResult
+struct ContactResultEx
 {
-    ContactResult()
-	    : hit(false) {}
-    
-    bool hit;
+    glm::vec2 position;
     glm::vec2 normal;
-    glm::vec2 position;    
-    float r;
+};
+
+struct Manifold
+{
+    Manifold() : numContacts(0) {}
+    
+    ContactResultEx contacts[2];
+    uint8_t numContacts;
+ 	
+    TransformManager::Instance instA;
+    TransformManager::Instance instB;
+    PhysicsManager::Instance pinstA;
+    PhysicsManager::Instance pinstB;
 };
 
 struct World;
-typedef ContactResult CONTACT_CALLBACK(World* world,
+typedef Manifold CONTACT_CALLBACK(World* world,
 				       glm::vec2 deltaVel,
 				       glm::vec2 otherDeltaVel,
 				       TransformManager::Instance transformA,

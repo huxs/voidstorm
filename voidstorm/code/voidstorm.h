@@ -46,6 +46,7 @@
 #include "voidstorm_component.h"
 #include "voidstorm_shape.h"
 #include "voidstorm_collision.h"
+#include "voidstorm_physics.h"
 #include "voidstorm_render.h"
 
 extern HeapAllocator* g_heapAllocator;

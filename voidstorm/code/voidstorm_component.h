@@ -7,7 +7,7 @@ struct Node
     Node() : entity({ENTITY_INVALID}), value(NODE_UNINITIALIZED), next(0) {}
 
     Entity entity;
-    int value;
+    uint32_t value;
     Node* next;
 };
 
@@ -15,14 +15,14 @@ struct ComponentMap
 {
     void add(dcutil::StackAllocator* stack, Entity entity, int compId);
     void remove(Entity entity);
-    int lookup(Entity entity);
+    uint32_t lookup(Entity entity);
     
     Node map[100];
 };
 
 struct TransformManager
 {
-    struct Instance { int index; };
+    struct Instance { uint32_t index; };
 	
     struct Data
     {
@@ -33,8 +33,7 @@ struct TransformManager
 	glm::vec2* position;
 	float* rotation;
 	float* depth;
-	float* scale;
-	
+	float* scale;	
     } data;
 	
     void allocate(uint32_t count);
@@ -56,7 +55,7 @@ struct TransformManager
 
 struct PhysicsManager
 {
-    struct Instance { int index; };
+    struct Instance { uint32_t index; };
 
     struct Data
     {
@@ -86,7 +85,7 @@ struct PhysicsManager
 
 struct CollisionResponderManager
 {
-    struct Instance { int index; };
+    struct Instance { uint32_t index; };
 
     struct CollisionResult
     {
@@ -113,12 +112,14 @@ struct CollisionResponderManager
     void destroy(Instance i);
     Instance lookup(Entity e) { return { map.lookup(e) }; };
 
+    void addEntity(Instance i, Entity e, const glm::vec2& position, const glm::vec2& normal);
+    
     ComponentMap map;	
 };
 
 struct SpriteManager
 {
-    struct Instance { int index; };
+    struct Instance { uint32_t index; };
 
     struct Data
     {
