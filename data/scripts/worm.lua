@@ -3,7 +3,7 @@ function WormPart.new(self, pos, index, parent)
    self.parent = parent
    self.index = index
 
-   MovableCollidableSprite.new(self, pos, type.enemy, bit.bor(type.wall, type.enemy, type.player))
+   MovableCollidableSprite.new(self, pos, type.worm, bit.bor(type.wall, type.worm, type.player, type.boulder))
 
    self:setCircleShape(20)
    self:setTextureAndSize(diamondTexture)
@@ -48,7 +48,7 @@ end
 
 function Worm.new(self, pos, partCount)
 
-   MovableCollidableSprite.new(self, pos, type.enemy, bit.bor(type.wall, type.enemy, type.player))
+   MovableCollidableSprite.new(self, pos, type.worm, bit.bor(type.wall, type.worm, type.player, type.boulder))
 
    self:setCircleShape(20)
    self:setTextureAndSize(boulderTexture)
@@ -62,6 +62,8 @@ function Worm.new(self, pos, partCount)
    self.isDead = 0
 
    self:randomDestination()
+
+   self.ray = Ray(self:getPosition(), self.destination, type.enemy)
 
    table.insert(self.parts, self)
    for i = 2, self.partCount do
@@ -85,8 +87,30 @@ function Worm.destroy(self)
       Sprite.destroy(self.parts[i])
    end
 
+   self.ray:destroy()
+
    -- Flag this for removal by the enemy manager
    self.isDead = 1
+
+end
+
+function Worm.rayTest(self)
+
+   local p = self:getPosition()
+   local d = self.destination - p
+   
+   self.ray:setPosition(p)
+   self.ray:setDirection(d)
+
+   local collidedEntities = es.getCollidedEntity(self.ray.entity)
+   for i = #collidedEntities, 1, -1 do      
+      local entity = collidedEntities[i][1]
+      local pos = collidedEntities[i][2]
+      local sprite = sprites[entity]
+      if entity ~= self.entity then	 
+	 self:randomDestination()
+      end
+   end
 
 end
 
@@ -95,12 +119,14 @@ function Worm.update(self)
    self.timer = self.timer + dt
    v = self.amplitude * math.sin(self.timer)
 
+   self:rayTest()
+
    local d = self.destination - self:getPosition()
-   if #d < 5.0 then
+   local dir = d.normalize
+   if #d < 15.0 then
       self:randomDestination()
    end
-
-   local dir = (self.destination - self:getPosition()).normalize
+   
    local force = vec2.new(dir.x * self.speed, (dir.y + v) * self.speed)
    es.addForce(self.entity, force)
 

@@ -3,8 +3,8 @@ function GameInitialize()
 
    dofile "sprite.lua"
    dofile "particles.lua"
-   dofile "debug.lua"   
-   
+   dofile "debug.lua"
+    
    sprites = {}
 
    World = {}

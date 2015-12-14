@@ -19,9 +19,10 @@ struct ContactManager
 
 struct PhysicsSimulator
 {
-    void simulate(World* world, float dt, LineRenderer* linerenderer);
-    void foo(World* world);
-    void asd(World* world, float dt);
+    void integrateVelocity(World* world, float dt);
+    void narrowCollision(World* world, float dt, LineRenderer* linerenderer);
+    void resolveCollisions(World* world);
+    void updateVelocity(World* world, float dt);
     
     Manifold manifolds[1024];
     uint32_t numManifolds;

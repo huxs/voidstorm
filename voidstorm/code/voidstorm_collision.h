@@ -1,5 +1,8 @@
 #pragma once
 
+#define DBVT_POOL_NUM_NODES 4096
+#define DBVT_QUERY_STACK_NUM_NODES 4096
+
 struct DbvtNode
 {
     DbvtNode(Entity _entity, const AABB& _aabb)
@@ -138,12 +141,10 @@ struct Manifold
 
 struct World;
 typedef Manifold CONTACT_CALLBACK(World* world,
-				       glm::vec2 deltaVel,
-				       glm::vec2 otherDeltaVel,
-				       TransformManager::Instance transformA,
-				       CollisionManager::ShapeData shapeA,
-				       TransformManager::Instance transformB,
-				       CollisionManager::ShapeData shapeB);
+				  TransformManager::Instance transformA,
+				  CollisionManager::ShapeData shapeA,
+				  TransformManager::Instance transformB,
+				  CollisionManager::ShapeData shapeB);
 
 extern CONTACT_CALLBACK* g_contactCallbacks[ShapeType::NONE][ShapeType::NONE];
 

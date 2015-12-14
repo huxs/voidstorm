@@ -29,6 +29,8 @@ LineRenderer::~LineRenderer()
 
 void LineRenderer::add(const glm::vec2& from, const glm::vec2& to, const glm::vec4& color)
 {
+    assert(vertexCount + 1 < VOIDSTORM_DEBUG_NUM_LINES * sizeof(LineVertex) * 2);
+    
     vertices[vertexCount++] = { glm::vec3(from.x, from.y, 0), color };
     vertices[vertexCount++] = { glm::vec3(to.x, to.y, 0), color };
 }

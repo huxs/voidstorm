@@ -501,9 +501,10 @@ int main(int argv, char** argc)
 		}
 	    }
 
-	    simulator->simulate(world, gameInput.dt, renderer->getLineRenderer());
-	    simulator->foo(world);
-	    simulator->asd(world, gameInput.dt);
+	    simulator->integrateVelocity(world, gameInput.dt);
+	    simulator->narrowCollision(world, gameInput.dt, renderer->getLineRenderer());
+	    simulator->resolveCollisions(world);
+	    simulator->updateVelocity(world, gameInput.dt);
 
 	    renderer->getParticleEngine()->update(gameInput.dt);
 

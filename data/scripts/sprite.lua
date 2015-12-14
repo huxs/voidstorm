@@ -6,7 +6,6 @@ dofile "class.lua"
 
 Sprite = class(nil)
 
-
 function Sprite.new(self, pos)
 
    self.entity = es.createEntity()

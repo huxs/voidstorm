@@ -5,7 +5,7 @@ function Bullet.new(self, parent, dir)
 
    local scale = 0.5
 
-   MovableCollidableSprite.new(self, parent:getPosition() + dir * 50, type.playerbullet, bit.bor(type.enemy, type.wall))
+   MovableCollidableSprite.new(self, parent:getPosition() + dir * 50, type.playerbullet, bit.bor(type.worm, type.boulder, type.wall))
    self:setCircleShape((boulderTexture:size().x / 2) * scale)
    self:addResponder()
    self:setTextureAndSize(boulderTexture)
@@ -65,7 +65,7 @@ end
 
 function Player.new(self, pos)
 
-   MovableCollidableSprite.new(self, pos, type.player, bit.bor(type.wall, type.enemy))
+   MovableCollidableSprite.new(self, pos, type.player, bit.bor(type.wall, type.worm, type.boulder))
    self:setCircleShape(20)
    self:addResponder()
    self:setTextureAndSize(texture.new("../../data/textures/player.dds"))

@@ -57,12 +57,9 @@ uint32_t ContactManager::lookup(uint32_t key)
     return reference;
 }
 
-void PhysicsSimulator::simulate(World* world, float dt, LineRenderer* linerenderer)
+void PhysicsSimulator::integrateVelocity(World* world, float dt)
 {
-    TIME_BLOCK(Physics_Simulate);
-
-    numManifolds = 0;
-    ContactManager cm;
+    TIME_BLOCK(Physics_IntegrateVelocity);
 
     for(uint32_t i = 1; i < world->physics.data.used; ++i)
     {
@@ -72,6 +69,14 @@ void PhysicsSimulator::simulate(World* world, float dt, LineRenderer* linerender
 	world->physics.data.acceleration[i] = (totalForce / world->physics.data.mass[i]);
 	world->physics.data.velocity[i] += world->physics.data.acceleration[i] * dt;
     }
+}
+
+void PhysicsSimulator::narrowCollision(World* world, float dt, LineRenderer* linerenderer)
+{
+    TIME_BLOCK(Physics_NarrowCollision);
+
+    numManifolds = 0;
+    ContactManager cm;
 
     for(uint32_t i = 1; i < world->collisions.data.used; ++i)
     {
@@ -83,10 +88,6 @@ void PhysicsSimulator::simulate(World* world, float dt, LineRenderer* linerender
 	TransformManager::Instance transform = world->transforms.lookup(e);
 	glm::vec2 pos = world->transforms.data.position[transform.index];
 	glm::vec2 newPosition = pos;
-
-	PhysicsManager::Instance physics = world->physics.lookup(e);	
-	glm::vec2 vel = world->physics.data.velocity[physics.index];
-	glm::vec2 deltaVel = vel * dt;
 
 	Contact* c = &world->collisions.data.contact[i];
 	while(c)
@@ -117,12 +118,8 @@ void PhysicsSimulator::simulate(World* world, float dt, LineRenderer* linerender
 			break;
 		    }
 
-		    PhysicsManager::Instance otherPhysics = world->physics.lookup(other_e);	
-		    glm::vec2 otherVel = world->physics.data.velocity[otherPhysics.index];
-		    glm::vec2 otherDeltaVel = vel * dt;
-		    
 		    // Execute collision routine
-		    Manifold manifold = c->callback(world, glm::vec2(0,0), otherDeltaVel, transform, shapeData, otherTransform, otherShapeData);
+		    Manifold manifold = c->callback(world, transform, shapeData, otherTransform, otherShapeData);
 		    if(manifold.numContacts > 0)
 		    {
 			// Callback
@@ -138,12 +135,15 @@ void PhysicsSimulator::simulate(World* world, float dt, LineRenderer* linerender
 			    world->responders.addEntity(otherResponder, e, manifold.contacts[0].position, manifold.contacts[0].normal);   
 			}
 
+			PhysicsManager::Instance physics = world->physics.lookup(e);
+			PhysicsManager::Instance otherPhysics = world->physics.lookup(other_e);
+			
 			// If both objects have physics component add the manifold for impulse resolution
 			if(physics.index != 0 && otherPhysics.index != 0)
 			{
 			    assert(numManifolds < ARRAYSIZE(manifolds));
 			    manifold.pinstA = physics;
-			    manifold.pinstB = otherPhysics;		    
+			    manifold.pinstB = otherPhysics; 		    
 			    manifolds[numManifolds++] = manifold;
 			}
 		    }		    	        			
@@ -155,9 +155,10 @@ void PhysicsSimulator::simulate(World* world, float dt, LineRenderer* linerender
     }
 }
 
-// Resolve collisions
-void PhysicsSimulator::foo(World* world)
+void PhysicsSimulator::resolveCollisions(World* world)
 {
+    TIME_BLOCK(Physics_ResolveCollisions);
+    
     for(uint32_t i = 0; i < numManifolds; ++i)
     {
 	TransformManager::Instance transformA = manifolds[i].instA;
@@ -203,8 +204,10 @@ void PhysicsSimulator::foo(World* world)
     }
 }
 
-void PhysicsSimulator::asd(World* world, float dt)
+void PhysicsSimulator::updateVelocity(World* world, float dt)
 {
+    TIME_BLOCK(Physics_UpdateVelocity);
+    
     for(uint32_t i = 1; i < world->physics.data.used; ++i)
     {
 	Entity e = world->physics.data.entities[i];
@@ -216,7 +219,6 @@ void PhysicsSimulator::asd(World* world, float dt)
 
 	glm::vec2 newPosition = pos + deltaVel;
 	
-	// If the entity moved perform new broad test
 	glm::vec2 displacement = newPosition - pos;
 	float dispLength = glm::length(displacement);
 	if(dispLength > 0)

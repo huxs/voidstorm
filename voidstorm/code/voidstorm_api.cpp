@@ -1355,11 +1355,24 @@ namespace api
 	return 0;
     }
 
+    static int drawLine(lua_State* luaState)
+    {
+	VoidstormContext* context = getContext(luaState);
+	glm::vec2 a = *(glm::vec2*)lua_touserdata(luaState, 1);
+	glm::vec2 b = *(glm::vec2*)lua_touserdata(luaState, 2);
+	glm::vec4 c = *(glm::vec4*)lua_touserdata(luaState, 3);
+
+	context->renderer->getLineRenderer()->add(a, b, c);
+	
+	return 0;
+    }
+
     const static luaL_Reg voidstorm_functions[] =
     {
 	{ "setPostProcessParams", setPostProcessParams},
 	{ "getResolution", getResolution},
 	{ "setCameraPosition", setCameraPosition },
+	{ "drawLine", drawLine },
 	{ NULL, NULL }
     };
 

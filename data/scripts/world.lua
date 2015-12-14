@@ -14,10 +14,11 @@ function World.initialize()
    type = {}
    type.player = bit.lshift(1, 0) 
    type.playerbullet = bit.lshift(1, 1)
-   type.enemy = bit.lshift(1, 2)
-   type.enemybullet = bit.lshift(1, 3)
-   type.wall = bit.lshift(1, 4)
-   type.ray = bit.lshift(1, 5)
+   type.worm = bit.lshift(1, 2)
+   type.boulder = bit.lshift(1, 3)
+   type.enemybullet = bit.lshift(1, 4)
+   type.wall = bit.lshift(1, 5)
+   type.ray = bit.lshift(1, 6)
   
    -- Preload the texture to be used
    wallTexture = texture.new("pixel.dds")
@@ -29,7 +30,8 @@ function World.initialize()
    World.size = vec2.new(3000, 3000)
    World.wall_width = 50
    World.camera = World.size / 2
-
+   
+   dofile "ray.lua"
    dofile "effects.lua"
    dofile "player.lua"
    dofile "worm.lua"
@@ -112,43 +114,14 @@ function World.start()
 						math.random() * World.size.y), 16))
    end
 
-   for i = 0, 64 do
+   for i = 0, 32 do
       table.insert(World.enemies, Boulder(vec2.new(math.random() * World.size.x,
 						   math.random() * World.size.y)))
    end
 
-   World.time = 0
-
-   -- Ray entity
-   Ray = {}
-   Ray.entity = es.createEntity()
-   Ray.dir = vec2.new(1,0)
-   es.setPosition(Ray.entity, vec2.new(1000, 1000))
-   es.addCollision(Ray.entity, type.ray, type.player) -- Example: Is the ray blocked by an enemy
-   es.setRayShape(Ray.entity, Ray.dir)
-   es.addResponder(Ray.entity)
-
 end
 
 function World.update()
-
-   World.time = World.time + dt * 1.0 * math.pi
-
-   -- Animate ray
-   Ray.dir = vec2.new(math.cos(-World.time), math.sin(-World.time))
-   es.setDirection(Ray.entity, Ray.dir)
-
-   local collidedEntities = es.getCollidedEntity(Ray.entity)
-   for i = #collidedEntities, 1, -1 do
-      
-      local entity = collidedEntities[i][1]
-      local pos = collidedEntities[i][2]
-      local sprite = sprites[entity]
-
-      if sprite ~= nil then	 
-	 print("Sound the alarm")
-      end
-   end
 
    -- Disco walls
    local hsv = color.toHSVFromRGB(World.lw:getColor()) + color.new(60 * dt, 0, 0, 0)
