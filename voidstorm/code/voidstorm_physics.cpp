@@ -112,12 +112,6 @@ void PhysicsSimulator::narrowCollision(World* world, float dt, LineRenderer* lin
 		{		    
 		    cm.add(g_permStackAllocator, key, a);
 		    
-		    if (c->callback == NULL)
-		    {
-			PRINT("ERROR: Entity %d colliding with %d has null callback.\n", e.index(), other_e.index());
-			break;
-		    }
-
 		    // Execute collision routine
 		    Manifold manifold = c->callback(world, transform, shapeData, otherTransform, otherShapeData);
 		    if(manifold.numContacts > 0)

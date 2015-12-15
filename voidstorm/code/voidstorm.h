@@ -16,7 +16,7 @@
   - CRT-Emulation mode
   - Android (Touch Input etc..)
   - Polygon-Particle / Splines / Swirling particles
-  - Concave polygons (Multple convex per entity..)
+  - Concave polygons (Multiple convex per entity)
   - Audio!
   - Menus! 
 */
@@ -36,6 +36,7 @@
 #include <dcutil/handleallocator.h>
 #include <dcutil/hash.h>
 #include <dcutil/allocator.h>
+#include <dcutil/color.h>
 
 #include <dcfx/context.h>
 

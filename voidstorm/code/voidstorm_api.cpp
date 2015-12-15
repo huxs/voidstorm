@@ -190,7 +190,7 @@ namespace api
 	if(strcmp(memberName, "y") == 0)
 	    lua_pushnumber(luaState, ptemp->y);
 
-	// TODO (daniel): This should be a static function.
+	// TODO (daniel): Change this to a static function
 	if(strcmp(memberName, "normalize") == 0)
 	    toVec2(luaState, glm::normalize(*ptemp));
 	return 1;
@@ -419,87 +419,22 @@ namespace api
 	return 1;
     }
 
-    // TODO (daniel): Move these conversion functions to the dcutil library.
     static int toRGBFromHSV(lua_State* luaState)
     {
-	glm::vec4* hsv = (glm::vec4*)lua_touserdata(luaState, 1);
-
-	// H [0, 360] S and V [0.0, 1.0].
-	float h = hsv->x;
-	float s = hsv->y;
-	float v = hsv->z;
-
-	int i = (int)floor(h/60.0f) % 6;
-	float f = h/60.0f - floor(h/60.0f);
-	float p = v * (float)(1 - s);
-	float q = v * (float)(1 - s * f);
-	float t = v * (float)(1 - (1 - f) * s);
-
-	glm::vec4 rgb = glm::vec4(0,0,0,hsv->w);
-    
-	switch (i) {
-	case 0:
-	    rgb.x = v;
-	    rgb.y = t;
-	    rgb.z = p;
-	    break;
-	case 1:
-	    rgb.x = q;
-	    rgb.y = v;
-	    rgb.z = p;
-	    break;
-	case 2:
-	    rgb.x = p;
-	    rgb.y = v;
-	    rgb.z = t;
-	    break;
-	case 3:
-	    rgb.x = p;
-	    rgb.y = q;
-	    rgb.z = v;
-	    break;
-	case 4:
-	    rgb.x = t;
-	    rgb.y = p;
-	    rgb.z = v;
-	    break;
-	case 5:
-	    rgb.x = v;
-	    rgb.y = p;
-	    rgb.z = q;
-	    break;
-	}
+	glm::vec4 hsv = *(glm::vec4*)lua_touserdata(luaState, 1);
+	
+	glm::vec4 rgb = dcutil::toRGBFromHSV(hsv);
+	
 	toColor(luaState, rgb);
 	return 1;
     };
 
     static int toHSVFromRGB(lua_State* luaState)
     {
-	glm::vec4* rgb = (glm::vec4*)lua_touserdata(luaState, 1);
+	glm::vec4 rgb = *(glm::vec4*)lua_touserdata(luaState, 1);
 
-	float r = rgb->x;
-	float g = rgb->y;
-	float b = rgb->z;
-
-	float minRGB = glm::min(r, glm::min(g, b));
-	float maxRGB = glm::max(r, glm::max(g, b));
-
-	glm::vec4 hsv = glm::vec4(0,0,0,rgb->w);
-    
-	if(minRGB == maxRGB)
-	{
-	    hsv.z = minRGB;
-	    toColor(luaState, hsv);
-	    return 1;
-	}
-
-	float d = (r == minRGB) ? g-b : ((b == minRGB) ? r-g : b-r);
-	int h = (r == minRGB) ? 3 : ((b == minRGB) ? 1 : 5);
-
-	hsv.x = 60.0f * (h - d / (maxRGB - minRGB));
-	hsv.y = (maxRGB - minRGB) / maxRGB;
-	hsv.z = maxRGB;
-    
+	glm::vec4 hsv = dcutil::toHSVFromRGB(rgb);
+	
 	toColor(luaState, hsv);
 	return 1;
     };
@@ -775,7 +710,7 @@ namespace api
 	World* world = getContext(luaState)->world;
 	Entity entity = world->entities.create();
 
-	// NOTE (daniel): A entity is always accompanied with a transform component.
+	// A entity is always accompanied with a transform component
 	TransformManager::Instance instance = world->transforms.lookup(entity);
 	if(instance.index == 0)
 	{
@@ -1018,8 +953,6 @@ namespace api
 	return 0;
     }
     
-
-    // TODO (daniel): There is probely a better and cleaner way for passing these results.
     static int getCollidedEntity(lua_State* luaState)
     {    
 	World* world = getContext(luaState)->world;
@@ -1063,7 +996,7 @@ namespace api
 	TransformManager::Instance transformInstance = context->world->transforms.lookup(e);
 	CollisionManager::Instance collisionInstance = context->world->collisions.lookup(e);
 
-	/* NOTE (daniel): When moving entities directly we cannot rely on the physics system to move the collision box, so we do it ourself here. */
+	// When moving entities directly we cannot rely on the physics system to move the collision box, so we do it ourself here
 	if(collisionInstance.index != 0)
 	{
 	    glm::vec2 oldPosition = context->world->transforms.getPosition(transformInstance);
@@ -1292,7 +1225,7 @@ namespace api
 	{ "getColor", getColor},
 	{ "setMass", setMass},
 	{ "setRestitution", setRestitution },
-	{ "addForce", setForce}, // TODO (daniel): Change scripts to use setForce
+	{ "addForce", setForce},
 	{ "setVelocity", setVelocity},
 	{ "getVelocity", getVelocity},
 	{ NULL, NULL }
@@ -1318,7 +1251,6 @@ namespace api
 	{ "write", fontWrite },
 	{ NULL, NULL }
     };
-
 
     /*
       ENGINE FUNCTIONS
