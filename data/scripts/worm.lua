@@ -63,7 +63,7 @@ function Worm.new(self, pos, partCount)
 
    self:randomDestination()
 
-   self.ray = Ray(self:getPosition(), self.destination, type.enemy)
+   self.ray = Ray(self:getPosition(), self.destination, type.worm)
 
    table.insert(self.parts, self)
    for i = 2, self.partCount do

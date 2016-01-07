@@ -136,7 +136,6 @@ function World.update()
    World.rw:setColor(rgb)
    World.tw:setColor(rgb)
 
-   -- Center camera on player
    voidstorm.setCameraPosition(World.camera)
    
    -- Update player
