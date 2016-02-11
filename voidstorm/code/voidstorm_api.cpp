@@ -859,17 +859,22 @@ namespace api
 	{
 	    vertices[i] = *(glm::vec2*)lua_touserdata(luaState, 3 + i);
 	}
+
+	glm::vec2 position;
+	TransformManager::Instance transformInstance = context->world->transforms.lookup(entity);
+	if(transformInstance.index != 0)
+	{
+	    position = context->world->transforms.getPosition(transformInstance);
+	}
 	
 	CollisionManager::Instance instance = context->world->collisions.lookup(entity);
 	if(instance.index != 0)
 	{
-	    context->world->collisions.createPolygonShape(instance, vertices, count);
+	    context->world->collisions.createPolygonShape(instance, vertices, count, position);
 	}
 
 	return 0;
     }
-
-    
 
     static int addResponder(lua_State* luaState)
     {
@@ -1004,9 +1009,9 @@ namespace api
 	    
 	    if(glm::length(displacement) > 0)
 	    {
-	        context->world->collisions.tree.moveProxy(
-		    context->world->collisions.getNode(collisionInstance),
-		    displacement);
+		DbvtNode* node = context->world->collisions.getNode(collisionInstance);
+		
+	        context->world->collisions.tree.moveProxy(node, displacement);
 	    }
 	}
 

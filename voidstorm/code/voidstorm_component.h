@@ -64,7 +64,7 @@ struct PhysicsManager
 	void* data;
 	Entity* entities;
 	float* mass;
-	float* restitution;
+	float* restitution; // elasticity
 	glm::vec2* force;
 	glm::vec2* acceleration;
 	glm::vec2* velocity;

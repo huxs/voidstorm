@@ -18,7 +18,8 @@ public:
 
     void drawCircle(const glm::vec2& pos, float radius, const glm::vec4& color);
     void drawAABB(const AABB& aabb, const glm::vec4& color);
-    void drawPolygon(const PolygonShape& shape, const glm::vec4& color);
+    void drawPolygon(const PolygonShape& shape, const glm::vec4& color, const glm::vec2& position);
+    void drawPolygon(const PolygonShape& shape, const glm::vec4& color, const Transform& transform);
     
 private:
     dcfx::Context* renderCtx;

@@ -1,6 +1,6 @@
 function TinyBoulder.new(self, pos, dir)
 
-   MovableCollidableSprite.new(self, pos, type.boulder, bit.bor(type.wall, type.worm, type.player, type.boulder))
+   MovableCollidableSprite.new(self, pos, type.boulder, bit.bor(type.wall, type.worm, type.player, type.boulder, type.test))
 
    self:setCircleShape(10)
    self:setMass(0.3)
@@ -28,7 +28,7 @@ end
 
 function Boulder.new(self, pos)
 
-   MovableCollidableSprite.new(self, pos, type.boulder, bit.bor(type.wall, type.boulder, type.player, type.worm))
+   MovableCollidableSprite.new(self, pos, type.boulder, bit.bor(type.wall, type.boulder, type.player, type.worm, type.test))
 
    self:setCircleShape(20)
    self:setTextureAndSize(boulderTexture)

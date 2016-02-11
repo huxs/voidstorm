@@ -90,13 +90,27 @@ void LineRenderer::drawAABB(const AABB& aabb, const glm::vec4& color)
     add(d, a, color);
 }
 
-void LineRenderer::drawPolygon(const PolygonShape& shape, const glm::vec4& color)
+void LineRenderer::drawPolygon(const PolygonShape& shape, const glm::vec4& color, const glm::vec2& position)
 {
     for(int i = 0; i < shape.count; ++i)
     {
 	glm::vec2 a = shape.vertices[i];
 	glm::vec2 b = i + 1 < shape.count ? shape.vertices[i+1] : shape.vertices[0];
 
+	add(a + position, b + position, color);
+    }
+}
+
+void LineRenderer::drawPolygon(const PolygonShape& shape, const glm::vec4& color, const Transform& transform)
+{
+    for(int i = 0; i < shape.count; ++i)
+    {
+	glm::vec2 a = shape.vertices[i];
+	glm::vec2 b = i + 1 < shape.count ? shape.vertices[i+1] : shape.vertices[0];
+
+	a = transform.mul(a);
+	b = transform.mul(b);
+	
 	add(a, b, color);
     }
 }

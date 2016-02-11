@@ -8,14 +8,6 @@ function debug_view()
    font.write("FPS: " .. tostring(fps.count), vec2.new(0.01, 0.04), false)
    font.write("# Entities: " .. tostring(es.getNrOfEntities()), vec2.new(0.01, 0.01), false)
 
-   p = 0
-   for i,v in pairs(sprites) do
-      --font.write("Entity: " .. i .. " Sprite: " .. tostring(v), vec2.new(10, p * 20 + 50), false)
-      if v ~= nil then
-	 p = p + 1
-      end
-   end
-
 end
 
 -- Create a number of sprites for performance testing.

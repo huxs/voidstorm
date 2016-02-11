@@ -1,7 +1,7 @@
 Dbvt::Dbvt(void* mem)
 	:
 	root(nullptr),
-	allocator(mem, sizeof(DbvtNode), DBVT_POOL_NUM_NODES)
+	allocator(mem, sizeof(DbvtNode), DBVT_POOL_MAX_NODES)
 {}
 
 DbvtNode* Dbvt::createProxy(Entity entity, const AABB& aabb)
@@ -217,7 +217,7 @@ void Dbvt::insertNode(DbvtNode* nodeToInsert)
 
 void Dbvt::visualize(LineRenderer* lineRenderer)
 {
-    DbvtNode* stack[DBVT_QUERY_STACK_NUM_NODES];
+    DbvtNode* stack[DBVT_QUERY_STACK_MAX_NODES];
     int count = 0;
     stack[count++] = root;
 
@@ -230,6 +230,7 @@ void Dbvt::visualize(LineRenderer* lineRenderer)
 	
 	lineRenderer->drawAABB(node->aabb, glm::vec4(1,1,0,1));
 
+	assert(count - 1 < DBVT_QUERY_STACK_MAX_NODES);
 	stack[count++] = node->child1;
 	stack[count++] = node->child2;
     }
@@ -237,7 +238,7 @@ void Dbvt::visualize(LineRenderer* lineRenderer)
 
 int Dbvt::query(const AABB& aabb, Contact* contacts)
 {
-    DbvtNode* stack[DBVT_QUERY_STACK_NUM_NODES];
+    DbvtNode* stack[DBVT_QUERY_STACK_MAX_NODES];
     int count = 0;
     stack[count++] = root;
 
@@ -254,12 +255,14 @@ int Dbvt::query(const AABB& aabb, Contact* contacts)
 	{
 	    if(current->isLeaf())
 	    {
+		assert(contactCounter < BROADPHASE_MAX_CONTACTS);
 		Contact* c = contacts + contactCounter;
 		c->entity = current->entity;
 		contactCounter++;
 	    }
 	    else
 	    {
+		assert(count - 1 < DBVT_QUERY_STACK_MAX_NODES);
 		stack[count++] = current->child1;
 		stack[count++] = current->child2;
 	    }
@@ -271,7 +274,7 @@ int Dbvt::query(const AABB& aabb, Contact* contacts)
 
 int Dbvt::query(DbvtNode* node, Contact* contacts)
 {
-    DbvtNode* stack[DBVT_QUERY_STACK_NUM_NODES];
+    DbvtNode* stack[DBVT_QUERY_STACK_MAX_NODES];
     int count = 0;
     stack[count++] = root;
 
@@ -290,6 +293,7 @@ int Dbvt::query(DbvtNode* node, Contact* contacts)
 	    {
 		if(node != current)
 		{
+		    assert(contactCounter < BROADPHASE_MAX_CONTACTS);
 		    Contact* c = contacts + contactCounter;
 		    c->entity = current->entity;
  		    contactCounter++;
@@ -297,6 +301,7 @@ int Dbvt::query(DbvtNode* node, Contact* contacts)
 	    }
 	    else
 	    {
+		assert(count - 1 < DBVT_QUERY_STACK_MAX_NODES);
 		stack[count++] = current->child1;
 		stack[count++] = current->child2;
 	    }
@@ -308,22 +313,24 @@ int Dbvt::query(DbvtNode* node, Contact* contacts)
   
 CONTACT_CALLBACK* g_contactCallbacks[ShapeType::NONE][ShapeType::NONE];
 
-
-static Manifold circleVsRay(World* world, TransformManager::Instance transformA, CollisionManager::ShapeData shapeA, TransformManager::Instance transformB, CollisionManager::ShapeData shapeB)
+static Manifold circleVsRay(World* world, TransformManager::Instance transformA, CollisionManager::ShapeData shapeA,
+			    TransformManager::Instance transformB, CollisionManager::ShapeData shapeB, LineRenderer* linerender)
 {
     Manifold result;
     result.instA = transformA;
     result.instB = transformB;
 
+    // TODO (daniel): Refactor this to use transforms
+    
+    CircleShape* circle = shapeA.data.circle;
+    RayShape* ray = shapeB.data.ray;
+    
     glm::vec2 offset = shapeA.offset;
     glm::vec2 otherOffset = shapeB.offset;
 
     glm::vec2 pos = world->transforms.data.position[transformA.index];
     glm::vec2 otherPos = world->transforms.data.position[transformB.index];
     
-    CircleShape* circle = shapeA.data.circle;
-    RayShape* ray = shapeB.data.ray;
-
     float scale = world->transforms.data.scale[transformA.index];
     glm::vec2 center = pos + offset;
     float radius = circle->radius;
@@ -371,16 +378,18 @@ static Manifold circleVsRay(World* world, TransformManager::Instance transformA,
     return result;
 }
 
-static Manifold rayVsCircle(World* world, TransformManager::Instance transformA, CollisionManager::ShapeData shapeA, TransformManager::Instance transformB, CollisionManager::ShapeData shapeB)
+static Manifold rayVsCircle(World* world, TransformManager::Instance transformA, CollisionManager::ShapeData shapeA, TransformManager::Instance transformB, CollisionManager::ShapeData shapeB, LineRenderer* linerender)
 {
-    return circleVsRay(world, transformB, shapeB, transformA, shapeA);
+    return circleVsRay(world, transformB, shapeB, transformA, shapeA, linerender);
 }
 
-static Manifold circleVsCircle(World* world, TransformManager::Instance transformA, CollisionManager::ShapeData shapeA, TransformManager::Instance transformB, CollisionManager::ShapeData shapeB)
+static Manifold circleVsCircle(World* world, TransformManager::Instance transformA, CollisionManager::ShapeData shapeA, TransformManager::Instance transformB, CollisionManager::ShapeData shapeB, LineRenderer* linerender)
 {
     Manifold result;
     result.instA = transformA;
     result.instB = transformB;
+
+    // TODO (daniel): Refactor this to use transforms
     
     glm::vec2 offset = shapeA.offset;
     glm::vec2 otherOffset = shapeB.offset;
@@ -413,26 +422,155 @@ static Manifold circleVsCircle(World* world, TransformManager::Instance transfor
     return result;
 }
 
+// Find the axis where the objects have the max separation
+static float findMaxSeparation(int& edgeIndex, PolygonShape* polyA, PolygonShape* polyB, const Transform& tA, const Transform& tB)
+{
+    int countA = polyA->count;
+    int countB = polyB->count;
 
-static Manifold circleVsPolygon(World* world, TransformManager::Instance transformA, CollisionManager::ShapeData shapeA, TransformManager::Instance transformB, CollisionManager::ShapeData shapeB)
+    Transform t = mulTransT(tB, tA);
+    
+    int bestIndex = 0;
+    float maxSeparation = -FLT_MAX;
+    for(int i = 0; i < countA; ++i)
+    {
+	glm::vec2 normal = polyA->normals[i];
+	normal = t.rotate(normal);
+
+	// PolyA position in PolyB frame
+	glm::vec2 position = polyA->vertices[i];
+	position = t.mul(position);
+
+	float si = FLT_MAX;
+	for(int j = 0; j < countB; ++j)
+	{
+	    float sij = glm::dot(normal, polyB->vertices[j] - position);
+	    if(sij < si)
+	    {
+		si = sij;
+	    }
+	}
+
+	if(si > maxSeparation)
+	{
+	    maxSeparation = si;
+	    bestIndex = i;
+	}
+    }
+
+    edgeIndex = bestIndex;
+    return maxSeparation;
+}
+
+static Manifold polygonVsPolygon(World* world, TransformManager::Instance transformA, CollisionManager::ShapeData shapeA,
+				 TransformManager::Instance transformB, CollisionManager::ShapeData shapeB, LineRenderer* linerender)
 {
     Manifold result;
     result.numContacts = 0;
     result.instA = transformA;
     result.instB = transformB;
+
+    PolygonShape* polygonA = shapeA.data.polygon;
+    PolygonShape* polygonB = shapeB.data.polygon;
+
+    // TODO (daniel): Refactor this block
+    glm::vec2 posA = world->transforms.data.position[transformA.index];
+    float rotA = world->transforms.data.rotation[transformA.index];
+    glm::vec2 posB = world->transforms.data.position[transformB.index];
+    float rotB = world->transforms.data.rotation[transformB.index];    
+    Transform tA(posA, rotA);
+    Transform tB(posB, rotB);
     
-    glm::vec2 offset = shapeA.offset;
-    glm::vec2 otherOffset = shapeB.offset;
+    int edgeA = 0;
+    float separationA = findMaxSeparation(edgeA, polygonA, polygonB, tA, tB);
+
+    if(separationA > 0.0f)
+	return result;
+    
+    int edgeB = 0;
+    float separationB = findMaxSeparation(edgeB, polygonB, polygonA, tB, tA);
+    
+    if(separationB > 0.0f)
+	return result;   
+
+    //PRINT("SepA %f EdgeA %d SepB %f Edge %d\n", separationA, edgeA, separationB, edgeB);
+
+    PolygonShape* poly1; // reference polygon
+    PolygonShape* poly2; // incident polygon
+    Transform t1;
+    Transform t2;
+    int refEdge;
+    bool flip = false;
+
+    static const float Tolerance = 0.001f;
+    
+    if(separationB > separationA + Tolerance)
+    {
+	poly1 = polygonB;
+	poly2 = polygonA;
+        t1 = tB;
+	t2 = tA;
+	refEdge = edgeB;
+    }
+    else
+    {
+	poly1 = polygonA;
+	poly2 = polygonB;
+        t1 = tA;
+	t2 = tB;
+	refEdge = edgeA;
+	flip = true;
+    }	   
+
+    int a = refEdge;
+    int b = refEdge + 1 < poly1->count ? refEdge + 1 : 0;
+
+    glm::vec2 v1 = poly1->vertices[a];
+    glm::vec2 v2 = poly1->vertices[b];
+
+    glm::vec2 tangent = v1 - v2;
+    tangent = glm::normalize(tangent);
+
+    glm::vec2 normal = glm::vec2(1.0f * tangent.y, -1.0f * tangent.x);
+    normal = t1.rotate(normal);
+
+    v1 = t1.mul(v1);
+    v2 = t1.mul(v2);
+    
+    glm::vec2 planePoint = 0.5f * (v1 + v2);
+
+    //linerender->add(v1, v2, glm::vec4(1,0,0,1));
+    //linerender->add(planePoint, planePoint + normal * 20.0f, glm::vec4(1,0,0,1));
+
+    result.numContacts = 1;
+    result.contacts[0].normal = (flip) ? normal : -normal;
+    result.contacts[0].position = planePoint;
+    
+    return result;
+}
+
+static Manifold circleVsPolygon(World* world, TransformManager::Instance transformA, CollisionManager::ShapeData shapeA, TransformManager::Instance transformB, CollisionManager::ShapeData shapeB, LineRenderer* linerender)
+{
+    Manifold result;
+    result.numContacts = 0;
+    result.instA = transformA;
+    result.instB = transformB;
 
     CircleShape* circle = shapeA.data.circle;
     PolygonShape* polygon = shapeB.data.polygon;
-    
-    glm::vec2 pos = world->transforms.data.position[transformA.index];
-    glm::vec2 otherPos = world->transforms.data.position[transformB.index];
 
-    glm::vec2 center = pos + offset;
-    glm::vec2 otherCenter = otherPos + otherOffset;
+    // TODO (daniel): Refactor this block
+    glm::vec2 posA = world->transforms.data.position[transformA.index];
+    float rotA = world->transforms.data.rotation[transformA.index];    
+    glm::vec2 posB = world->transforms.data.position[transformB.index];
+    float rotB = world->transforms.data.rotation[transformB.index];
+    Transform tB(posB, rotB);
 
+    // Computer the circle position in the frame of the polygon
+    glm::vec2 center = posA;
+    center = tB.mulInverse(center);
+
+    // Find the max separating edge
     int normalIndex = 0;
     float separation = -FLT_MAX;
     
@@ -456,6 +594,7 @@ static Manifold circleVsPolygon(World* world, TransformManager::Instance transfo
     // Vertices that subtend the incident face
     int vertexIndex0 = normalIndex;
     int vertexIndex1 = vertexIndex0 + 1 < polygon->count ? vertexIndex0 + 1 : 0;
+    
     glm::vec2 v0 = polygon->vertices[vertexIndex0];
     glm::vec2 v1 = polygon->vertices[vertexIndex1];
 
@@ -467,8 +606,8 @@ static Manifold circleVsPolygon(World* world, TransformManager::Instance transfo
     if(separation < VOIDSTORM_EPSILON)
     {
 	result.numContacts = 1;
-	result.contacts[0].normal = polygon->normals[normalIndex];
-	result.contacts[0].position = (v0 + u0 * glm::normalize(v1 - v0)) + result.contacts[0].normal * circle->radius;
+	result.contacts[0].normal = tB.rotate(polygon->normals[normalIndex]);
+	result.contacts[0].position = tB.mul((v0 + u0 * glm::normalize(v1 - v0)) + result.contacts[0].normal * circle->radius);
 	return result;
     }    
 
@@ -480,8 +619,8 @@ static Manifold circleVsPolygon(World* world, TransformManager::Instance transfo
 	}
 
 	result.numContacts = 1;
-	result.contacts[0].normal = glm::normalize(center - v0);
-	result.contacts[0].position = v0 + result.contacts[0].normal * circle->radius;
+	result.contacts[0].normal = tB.rotate(glm::normalize(center - v0));
+	result.contacts[0].position = tB.mul(v0 + result.contacts[0].normal * circle->radius);
     }
     else if(u1 <= 0.0f)
     {
@@ -491,8 +630,8 @@ static Manifold circleVsPolygon(World* world, TransformManager::Instance transfo
 	}
 
 	result.numContacts = 1;
-	result.contacts[0].normal = glm::normalize(center - v1);
-	result.contacts[0].position = v1 + result.contacts[0].normal * circle->radius;
+	result.contacts[0].normal = tB.rotate(glm::normalize(center - v1));
+	result.contacts[0].position = tB.mul(v1 + result.contacts[0].normal * circle->radius);
     }
     else
     {
@@ -505,35 +644,36 @@ static Manifold circleVsPolygon(World* world, TransformManager::Instance transfo
 	}
 
 	result.numContacts = 1;
-	result.contacts[0].normal = polygon->normals[vertexIndex0];
-	result.contacts[0].position = (v0 + u0 * glm::normalize(v1 - v0)) + result.contacts[0].normal * circle->radius;
+	result.contacts[0].normal = tB.rotate(polygon->normals[vertexIndex0]);
+	result.contacts[0].position = tB.mul((v0 + u0 * glm::normalize(v1 - v0)) + result.contacts[0].normal * circle->radius);
     }
     
     return result;
 }
 
-static Manifold polygonVsCircle(World* world, TransformManager::Instance transformA, CollisionManager::ShapeData shapeA, TransformManager::Instance transformB, CollisionManager::ShapeData shapeB)
+static Manifold polygonVsCircle(World* world, TransformManager::Instance transformA, CollisionManager::ShapeData shapeA, TransformManager::Instance transformB, CollisionManager::ShapeData shapeB, LineRenderer* linerender)
 {
-    return circleVsPolygon(world, transformB, shapeB, transformA, shapeA);
+    return circleVsPolygon(world, transformB, shapeB, transformA, shapeA, linerender);
 }
 
-static Manifold stub(World* world, TransformManager::Instance transformA, CollisionManager::ShapeData shapeA, TransformManager::Instance transformB, CollisionManager::ShapeData shapeB)
+static Manifold stub(World* world, TransformManager::Instance transformA, CollisionManager::ShapeData shapeA, TransformManager::Instance transformB, CollisionManager::ShapeData shapeB, LineRenderer* linerender)
 {
     Manifold result;
     result.numContacts = 0;
     result.instA = transformA;
     result.instB = transformB;
+    PRINT("INFO: Collision routine not yet implemented.\n");
     return result;
 }
 
 CollisionManager::CollisionManager()
-	: tree(g_permStackAllocator->alloc(sizeof(DbvtNode) * DBVT_POOL_NUM_NODES)),
-	  circlePool(g_permStackAllocator->alloc(sizeof(CircleShape) * 1024), sizeof(CircleShape), 1024),
-	  polygonPool(g_permStackAllocator->alloc(sizeof(PolygonShape) * 1024), sizeof(PolygonShape), 1024),
-	  rayPool(g_permStackAllocator->alloc(sizeof(RayShape) * 1024), sizeof(RayShape), 1024)
+	: tree(g_permStackAllocator->alloc(sizeof(DbvtNode) * DBVT_POOL_MAX_NODES)),
+	  circlePool(g_permStackAllocator->alloc(sizeof(CircleShape) * SHAPE_POOL_MAX_CIRCLES), sizeof(CircleShape), SHAPE_POOL_MAX_CIRCLES),
+	  polygonPool(g_permStackAllocator->alloc(sizeof(PolygonShape) * SHAPE_POOL_MAX_POLYGONS), sizeof(PolygonShape), SHAPE_POOL_MAX_POLYGONS),
+	  rayPool(g_permStackAllocator->alloc(sizeof(RayShape) * SHAPE_POOL_MAX_RAYS), sizeof(RayShape), SHAPE_POOL_MAX_RAYS)
 {
     g_contactCallbacks[ShapeType::CIRCLE][ShapeType::CIRCLE] = circleVsCircle;
-    g_contactCallbacks[ShapeType::POLYGON][ShapeType::POLYGON] = stub;
+    g_contactCallbacks[ShapeType::POLYGON][ShapeType::POLYGON] = polygonVsPolygon;
     g_contactCallbacks[ShapeType::RAY][ShapeType::RAY] = stub;
     
     g_contactCallbacks[ShapeType::CIRCLE][ShapeType::POLYGON] = circleVsPolygon;
@@ -551,8 +691,12 @@ void CollisionManager::reset()
 	tree.destroyProxy(data.node[i]);
     }
 
-    circlePool.initialize(sizeof(CircleShape), 1024);
-    polygonPool.initialize(sizeof(PolygonShape), 1024);
+    circlePool.initialize(sizeof(CircleShape), SHAPE_POOL_MAX_CIRCLES);
+    polygonPool.initialize(sizeof(PolygonShape), SHAPE_POOL_MAX_POLYGONS);
+    rayPool.initialize(sizeof(RayShape), SHAPE_POOL_MAX_RAYS);
+
+    data.used = 1;
+    map = ComponentMap();
 }
 
 void CollisionManager::allocate(uint32_t count)
@@ -634,13 +778,21 @@ void CollisionManager::destroy(Instance i)
     //PRINT("Components used: %d\n", data.used - 1);
 }
 
-void CollisionManager::addContacts(Instance i)
+void CollisionManager::broadTest(Instance i)
 {
-   // Query for contacts
-    Contact contacts[1024];
+    // Clear existing contacts
+    Contact* contact = &data.contact[i.index];
+    while(contact)
+    {
+	contact->entity = Entity_Null;
+	contact = contact->next;
+    }
+    
+    // Query for contacts
+    Contact contacts[BROADPHASE_MAX_CONTACTS];
     int count = tree.query(data.node[i.index], contacts);
     
-    Contact* contact = &data.contact[i.index];
+    contact = &data.contact[i.index];
     
     for(int index = 0; index < count; ++index)
     {
@@ -680,30 +832,10 @@ void CollisionManager::addContacts(Instance i)
 
 	} while(contact);
     }
-
-    Contact* c = &data.contact[i.index];
-    while(c)
-    {
-	if(c->callback == NULL && c->entity != Entity_Null)
-	    PRINT("Error instance %d\n", i.index);
-	  
-	c = c->next;
-    }
-}
-
-void CollisionManager::resetContacts(Instance i)
-{
-    Contact* contact = &data.contact[i.index];
-    while(contact)
-    {
-	contact->entity = Entity_Null;
-	contact = contact->next;
-    }
 }
 
 void CollisionManager::createCircleShape(Instance i, float radius, const glm::vec2& position)
 {
-    // Allocate shape
     if(data.shape[i.index].shape != ShapeType::NONE)
 	freeShape(data.shape[i.index].shape, data.shape[i.index].data.ptr);
     
@@ -711,20 +843,17 @@ void CollisionManager::createCircleShape(Instance i, float radius, const glm::ve
     data.shape[i.index].data.ptr = allocateShape(ShapeType::CIRCLE);
     data.shape[i.index].data.circle->radius = radius;
 
-    // Build AABB that covers the collision shape	    
     AABB aabb;
     aabb.lower = glm::vec2(position.x - radius, position.y - radius);
     aabb.upper = glm::vec2(position.x + radius, position.y + radius);
 
-    // Insert into tree
     data.node[i.index] = tree.createProxy(data.entities[i.index], aabb);
 
-    addContacts(i);	     
+    broadTest(i);	     
 }
 
-void CollisionManager::createPolygonShape(Instance i, glm::vec2* vertices, uint32_t count)
+void CollisionManager::createPolygonShape(Instance i, glm::vec2* vertices, uint32_t count, const glm::vec2& position)
 {
-    // Allocate shape
     if(data.shape[i.index].shape != ShapeType::NONE)
 	freeShape(data.shape[i.index].shape, data.shape[i.index].data.ptr);
     
@@ -733,17 +862,27 @@ void CollisionManager::createPolygonShape(Instance i, glm::vec2* vertices, uint3
 
     data.shape[i.index].data.polygon->set(vertices, count);
 
+    // TODO (daniel): Can we make a better AABB approx for polygons
     AABB aabb = data.shape[i.index].data.polygon->computeAABB();
 
-    // Insert into tree
+    float len = glm::max(aabb.upper.x - aabb.lower.x, aabb.upper.y - aabb.lower.y) / 2;
+    
+    aabb.lower.x -= len; 
+    aabb.upper.x += len;
+
+    aabb.lower.y -= len; 
+    aabb.upper.y += len;
+    
+    aabb.lower += position;
+    aabb.upper += position;
+
     data.node[i.index] = tree.createProxy(data.entities[i.index], aabb);
 
-    addContacts(i);
+    broadTest(i);
 }
 
 void CollisionManager::createRayShape(Instance i, const glm::vec2& direction, const glm::vec2& position)
 {
-    // Allocate shape
     if(data.shape[i.index].shape != ShapeType::NONE)
 	freeShape(data.shape[i.index].shape, data.shape[i.index].data.ptr);
     
@@ -762,10 +901,9 @@ void CollisionManager::createRayShape(Instance i, const glm::vec2& direction, co
     aabb.lower = min;
     aabb.upper = max;
     
-    // Insert into tree
     data.node[i.index] = tree.createProxy(data.entities[i.index], aabb);
 
-    addContacts(i);
+    broadTest(i);
 }
 
 void* CollisionManager::allocateShape(ShapeType type)
@@ -794,17 +932,19 @@ void CollisionManager::freeShape(ShapeType type, void* ptr)
 	break;
     case ShapeType::POLYGON:
 	polygonPool.free(ptr);
+	break;
     case ShapeType::RAY:
 	rayPool.free(ptr);
 	break;
     }
 }
 
-// TODO: Fix
 void CollisionManager::setRadius(Instance i, float radius)
 {
     assert(data.shape[i.index].shape == ShapeType::CIRCLE);
     data.shape[i.index].data.circle->radius = radius;
+
+    // TODO (daniel): Update the proxy bound for the circle and perform new broad test
 }
 
 void CollisionManager::setDirection(Instance i, const glm::vec2& direction, const glm::vec2& position)
@@ -824,7 +964,6 @@ void CollisionManager::setDirection(Instance i, const glm::vec2& direction, cons
 
     tree.updateProxyBounds(data.node[i.index], aabb);
     
-    resetContacts(i);
-    addContacts(i);
+    broadTest(i);
 }
 

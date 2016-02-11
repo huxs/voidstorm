@@ -10,7 +10,10 @@
   - Set the source rectangle for a sprite
   - Add shaders and fonts to resource manager
   - Better debug view. Add voidstorm_debug.cpp. / Tweak debug variables from lua
-  - Polygons have their vertices in world space and wont be moved by transform
+
+  PHYSICS:
+  - Rotation
+  - Friction between objects
   
   TODO (daniel): *Potential Future*
   - CRT-Emulation mode

@@ -5,7 +5,7 @@ function Bullet.new(self, parent, dir)
 
    local scale = 0.5
 
-   MovableCollidableSprite.new(self, parent:getPosition() + dir * 50, type.playerbullet, bit.bor(type.worm, type.boulder, type.wall))
+   MovableCollidableSprite.new(self, parent:getPosition() + dir * 50, type.playerbullet, bit.bor(type.worm, type.boulder, type.wall, type.test))
    self:setCircleShape((boulderTexture:size().x / 2) * scale)
    self:addResponder()
    self:setTextureAndSize(boulderTexture)
@@ -48,7 +48,7 @@ function Bullet:update(index)
 	 p:setPosition(pos)
 	 p:play()
 
-	 if sprite:getType() ~= type.wall then
+	 if sprite:getType() ~= type.wall and sprite:getType() ~= type.test then
 	    sprite:destroy()
 	 end
 
@@ -65,7 +65,7 @@ end
 
 function Player.new(self, pos)
 
-   MovableCollidableSprite.new(self, pos, type.player, bit.bor(type.wall, type.worm, type.boulder))
+   MovableCollidableSprite.new(self, pos, type.player, bit.bor(type.wall, type.worm, type.boulder, type.test))
    self:setCircleShape(20)
    self:addResponder()
    self:setTextureAndSize(texture.new("../../data/textures/player.dds"))
@@ -174,7 +174,7 @@ function Player.update(self)
       local pos = collidedEntities[i][2]
       local sprite = sprites[entity]
       if sprite ~= nil then
-	 if sprite:getType() ~= type.wall then
+	 if sprite:getType() ~= type.wall and sprite:getType() ~= type.test then
 	    local p = particle.new(explosion)
 	    p:setPosition(pos)
 	    p:play()

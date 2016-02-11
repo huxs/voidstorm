@@ -23,8 +23,6 @@ void World::reset()
     physics.map = ComponentMap();
 
     collisions.reset();
-    collisions.data.used = 1;
-    collisions.map = ComponentMap();
     
     responders.data.used = 1;
     responders.map = ComponentMap();
@@ -467,7 +465,10 @@ int main(int argv, char** argc)
 		Entity e = world->collisions.data.entities[i];
 		TransformManager::Instance transform = world->transforms.lookup(e);
 		glm::vec2 pos = world->transforms.data.position[transform.index];
-		
+		float rotation = world->transforms.data.rotation[transform.index];
+
+		Transform t(pos, rotation);
+
 		CollisionManager::ShapeData shapeData = world->collisions.data.shape[i];
 		DbvtNode* node = world->collisions.data.node[i];
 		
@@ -475,7 +476,7 @@ int main(int argv, char** argc)
 		    renderer->getLineRenderer()->drawCircle(pos, shapeData.data.circle->radius, glm::vec4(0,0,1,1));
 
 		if(shapeData.shape == ShapeType::POLYGON)
-		    renderer->getLineRenderer()->drawPolygon(*shapeData.data.polygon, glm::vec4(0, 0, 1, 1));
+		    renderer->getLineRenderer()->drawPolygon(*shapeData.data.polygon, glm::vec4(0, 0, 1, 1), t);
 		
 #if VOIDSTORM_DEBUG_PROXY_BOUNDS == 1
 		renderer->getLineRenderer()->drawAABB(node->aabb, glm::vec4(0,1,0,1));

@@ -219,6 +219,9 @@ void Renderer::render(World* world)
 	Texture* texture = world->sprites.data.texture[i];
 	glm::vec2 size = world->sprites.data.size[i];
 	glm::vec2 origin = world->sprites.data.origin[i];
+
+	if(texture == NULL)
+	    continue;
 	
 	TransformManager::Instance transform = world->transforms.lookup(e);
 	assert(transform.index != 0);

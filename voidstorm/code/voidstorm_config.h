@@ -2,7 +2,6 @@
 
 // TODO (daniel): Render defines.
 
-
 #define VOIDSTORM_PROFILE_NUM_COUNTERS 25
 
 #define VOIDSTORM_APPLICATION_HEAP_SIZE Megabytes(80)

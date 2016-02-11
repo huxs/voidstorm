@@ -170,7 +170,7 @@ public:
     ParticleEffectManager(dcutil::StackAllocator* _stack)
 	    : stack(_stack), effects(_stack) {}
 
-    // NOTE: Loads a particle effect description off the lua stack
+    // NOTE (daniel): Loads a particle effect description off the lua stack
     ParticleEffectDescription* load(lua_State* luaState);
     
     void remove(ParticleEffectDescription* effect);

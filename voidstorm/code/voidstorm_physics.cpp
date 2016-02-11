@@ -63,6 +63,7 @@ void PhysicsSimulator::integrateVelocity(World* world, float dt)
 
     for(uint32_t i = 1; i < world->physics.data.used; ++i)
     {
+	// NOTE (daniel): Hard coded friction constant
 	glm::vec2 friction = world->physics.data.velocity[i] * 1.2f;
 	glm::vec2 totalForce = world->physics.data.force[i] - friction;
 			
@@ -113,7 +114,7 @@ void PhysicsSimulator::narrowCollision(World* world, float dt, LineRenderer* lin
 		    cm.add(g_permStackAllocator, key, a);
 		    
 		    // Execute collision routine
-		    Manifold manifold = c->callback(world, transform, shapeData, otherTransform, otherShapeData);
+		    Manifold manifold = c->callback(world, transform, shapeData, otherTransform, otherShapeData, linerenderer);
 		    if(manifold.numContacts > 0)
 		    {
 			// Callback
@@ -149,51 +150,65 @@ void PhysicsSimulator::narrowCollision(World* world, float dt, LineRenderer* lin
     }
 }
 
+// Impulse resolution
 void PhysicsSimulator::resolveCollisions(World* world)
 {
     TIME_BLOCK(Physics_ResolveCollisions);
-    
-    for(uint32_t i = 0; i < numManifolds; ++i)
-    {
-	TransformManager::Instance transformA = manifolds[i].instA;
-	TransformManager::Instance transformB = manifolds[i].instB;
-	
-	PhysicsManager::Instance physicsA = manifolds[i].pinstA;
-	PhysicsManager::Instance physicsB = manifolds[i].pinstB;
-	
-	glm::vec2 velA = world->physics.data.velocity[physicsA.index];
-	glm::vec2 velB = world->physics.data.velocity[physicsB.index];
 
-	int flagA = world->physics.data.flags[physicsA.index];
-	int flagB = world->physics.data.flags[physicsB.index];
-	
-	glm::vec2 collisionNormal = manifolds[i].contacts[0].normal;
-	
-	glm::vec2 relVel = velB - velA;
-	float contactVel = glm::dot(relVel, collisionNormal);
-
-	if(contactVel > 0)
+    for(uint32_t it = 0; it < 20; ++it)
+    {   
+	for(uint32_t i = 0; i < numManifolds; ++i)
 	{
-	    float invMassA = 1.0f / world->physics.data.mass[physicsA.index];
-	    float invMassB = 1.0f / world->physics.data.mass[physicsB.index];
+	    TransformManager::Instance transformA = manifolds[i].instA;
+	    TransformManager::Instance transformB = manifolds[i].instB;
+	
+	    PhysicsManager::Instance physicsA = manifolds[i].pinstA;
+	    PhysicsManager::Instance physicsB = manifolds[i].pinstB;
+	
+	    glm::vec2 velA = world->physics.data.velocity[physicsA.index];
+	    glm::vec2 velB = world->physics.data.velocity[physicsB.index];
 
-	    float restitutionA = world->physics.data.restitution[physicsA.index];
-	    float restitutionB = world->physics.data.restitution[physicsB.index];
+	    int flagA = world->physics.data.flags[physicsA.index];
+	    int flagB = world->physics.data.flags[physicsB.index];
+	
+	    glm::vec2 collisionNormal = manifolds[i].contacts[0].normal;
+	
+	    glm::vec2 relVel = velB - velA;
+	    float contactVel = glm::dot(relVel, collisionNormal);
+
+	    // Only perform impulse resolution if the objects are moving into eachother
+	    if(contactVel > 0)
+	    {
+		float invMassA = 1.0f / world->physics.data.mass[physicsA.index];
+		float invMassB = 1.0f / world->physics.data.mass[physicsB.index];
+
+		float restitutionA = world->physics.data.restitution[physicsA.index];
+		float restitutionB = world->physics.data.restitution[physicsB.index];
 	    
-	    // restitution
-	    float e = glm::max(restitutionA, restitutionB);
+		// Restitution
+		// TODO (daniel): Use the minimum instead
+		float e = glm::max(restitutionA, restitutionB);
 
-	    // impulse
-	    float j = -(1.0f + e) * contactVel;
-	    j /= (invMassA + invMassB);
+		// Impulse
+		float j = -(1.0f + e) * contactVel;
+		j /= (invMassA + invMassB);
 
-	    glm::vec2 impulse = j * collisionNormal;
+		glm::vec2 impulse = j * collisionNormal;
 
-	    if(flagA == 0)
-		world->physics.data.velocity[physicsA.index] -= invMassA * impulse;
+		// TODO (daniel): Rotational velocity
 
-	    if(flagB == 0)
-		world->physics.data.velocity[physicsB.index] += invMassB * impulse;	    
+		// TODO (daniel): Friction between objects
+		
+		// TODO (daniel): Fix the flag issue
+		if(flagA == 0)
+		    world->physics.data.velocity[physicsA.index] -= invMassA * impulse;
+
+		if(flagB == 0)
+		    world->physics.data.velocity[physicsB.index] += invMassB * impulse;	    
+	    }
+
+	    // TODO (daniel): Penetration Resolution
+	    // Due to floating point issues, objects can penetrate eachother slightly
 	}
     }
 }
@@ -220,12 +235,10 @@ void PhysicsSimulator::updateVelocity(World* world, float dt)
 	    CollisionManager::Instance collision = world->collisions.lookup(e);
 	    DbvtNode* node = world->collisions.data.node[collision.index];
 	    
-	    world->collisions.resetContacts(collision);
-	    world->collisions.addContacts(collision);	    
+	    world->collisions.broadTest(collision);	    
 	    world->collisions.tree.moveProxy(node, displacement);
 
 	    world->transforms.data.position[transform.index] = newPosition;
 	}
-
     }
 }

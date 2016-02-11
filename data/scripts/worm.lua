@@ -48,7 +48,7 @@ end
 
 function Worm.new(self, pos, partCount)
 
-   MovableCollidableSprite.new(self, pos, type.worm, bit.bor(type.wall, type.worm, type.player, type.boulder))
+   MovableCollidableSprite.new(self, pos, type.worm, bit.bor(type.wall, type.worm, type.player, type.boulder, type.test))
 
    self:setCircleShape(20)
    self:setTextureAndSize(boulderTexture)
