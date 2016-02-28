@@ -49,8 +49,8 @@ function World.start()
    World.effect = particle.new(starsystem)
    World.effect:play(2000)
 
-   --player = Player(vec2.new(World.size.x / 2, World.size.y / 2))
-   player = Player(vec2.new(550, 350))
+   player = Player(vec2.new(World.size.x / 2, World.size.y / 2))
+   --player = Player(vec2.new(550, 350))
 
    math.randomseed(os.time())
 
