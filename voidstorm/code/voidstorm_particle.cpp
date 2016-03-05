@@ -267,7 +267,7 @@ void ParticleEngine::spawn(ParticleEmitter* emitter)
 
 	force *= glm::length(emitter->desc->force);
 
-	// Particles assumed to have the same mass for now
+        // NOTE (daniel): Particles assumed to have the same mass for now
 	p.acceleration = force;	
 	p.velocity = glm::vec2(0,0);
 	
@@ -276,7 +276,7 @@ void ParticleEngine::spawn(ParticleEmitter* emitter)
 	p.color.b = randBetween(emitter->desc->colorMin.b, emitter->desc->colorMax.b);
 	p.color.a = randBetween(emitter->desc->colorMin.a, emitter->desc->colorMax.a);
 
-	// Partilces assumed to be rectangular so only uniform scaling
+	// NOTE (daniel): Particles assumed to be rectangular so only uniform scaling
 	float size = randBetween(emitter->desc->sizeMin, emitter->desc->sizeMax);
 	p.size = glm::vec2(size,size);
 	p.rotation = glm::radians(randBetween(emitter->desc->rotationMin, emitter->desc->rotationMax));
@@ -297,7 +297,7 @@ void ParticleEngine::emit(float dt)
 {
     TIME_BLOCK(Particle_Emit);
 
-    // TODO: (daniel): Itterate _only_ on those emitters that _can_ spawn and _should_ spawn.
+    // TODO (daniel): Itterate _only_ on those emitters that _can_ spawn and _should_ spawn.
     for(uint32_t i = 0; i < emittersInPlayCount; ++i)
     {
 	// TODO (daniel): Remove this state check
@@ -375,7 +375,7 @@ void ParticleEngine::render(int view)
 
 	    glm::vec4 color = p->color;
 
-	    // This is an argument for not using lifetime == 0 as infinite
+	    // NOTE (daniel): This is an argument for not using lifetime == 0 as infinite
 	    if(p->lifetime != 0)
 		color += (emitter->desc->endColor - p->color) * (p->time / p->lifetime);
 

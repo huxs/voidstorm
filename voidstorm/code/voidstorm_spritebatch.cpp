@@ -1,7 +1,7 @@
 #include <dcutil/sort.h>
 #include <dcutil/memoryreader.h>
 
-// TODO: Move to resource manager when we have one!
+// TODO (daniel): Move fonts to resource manager
 static SpriteFont loadFont(dcfx::Context* renderCtx, const char* filepath)
 {
     SpriteFont font;
@@ -110,7 +110,7 @@ SpriteBatch::SpriteBatch(dcfx::Context* _renderCtx)
     uint32_t* indices = (uint32_t*)renderCtx->frameAlloc(
 	SpriteBatch::MaxSprites * SpriteBatch::IndicesPerSprite * sizeof(uint32_t));
 
-    // NOTE: Counter-clockwise culling.
+    // Counter-clockwise culling
     for(uint32_t vertex = 0, index = 0;
 	vertex < SpriteBatch::MaxSprites * SpriteBatch::VerticesPerSprite;
 	vertex += SpriteBatch::VerticesPerSprite, index += SpriteBatch::IndicesPerSprite)
@@ -334,7 +334,7 @@ void SpriteBatch::bufferSprite(SpriteInfo* spriteInfo, SpriteVertex* data, int i
 
     glm::vec2 origin = glm::vec2(spriteInfo->originRotationDepth.x, spriteInfo->originRotationDepth.y);
 
-    // NOTE: This code is needed if we supply source in pixels.
+    // NOTE (daniel): This code is needed if we supply source in pixels.
     /*
       if(spriteInfo->source.z != 0 && spriteInfo->source.w != 0) {
       origin.x /= spriteInfo->source.z;

@@ -17,7 +17,6 @@
 
 typedef int bool32;
 
-#include "voidstorm_config.h"
 #include "voidstorm_input.h" // GameInput
 
 #ifdef VOIDSTORM_INTERNAL
@@ -31,7 +30,7 @@ struct ProfileRecord
 
 extern ProfileRecord g_counters[];
 
-// TODO: Make hit count, add __rdtsc to count clock cycles
+// TODO (daniel): Make hit count, add __rdtsc to count clock cycles
 // and make thread safe by atomic operations.
 struct TimedBlock
 {

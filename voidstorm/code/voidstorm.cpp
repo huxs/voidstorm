@@ -215,7 +215,7 @@ int main(int argv, char** argc)
 
 	// Create game stack memory which is freed when reloading the game
 	uint8_t* gameStackPtr = (uint8_t*)permStackPtr + VOIDSTORM_APPLICATION_PERMANENT_STACK_SIZE;
-	dcutil::StackAllocator* gameStackAllocator = new(gameStackPtr) dcutil::StackAllocator(gameStackPtr + sizeof(dcutil::StackAllocator), VOIDSTORM_APPLICATION_WORLD_STACK_SIZE);
+	dcutil::StackAllocator* gameStackAllocator = new(gameStackPtr) dcutil::StackAllocator(gameStackPtr + sizeof(dcutil::StackAllocator), VOIDSTORM_APPLICATION_GAME_STACK_SIZE);
 	g_gameStackAllocator = gameStackAllocator;
 	
 	// Create global heap allocator

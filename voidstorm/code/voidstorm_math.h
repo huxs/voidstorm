@@ -3,7 +3,7 @@
 #include <glm/gtx/transform.hpp>
 
 /* AABB */
-
+// NOTE (daniel): Mabey rename this to Rectangle?
 struct AABB
 {
     glm::vec2 getCenter();

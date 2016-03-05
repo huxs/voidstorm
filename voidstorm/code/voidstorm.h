@@ -2,20 +2,34 @@
 
 /*
   TODO (daniel):
+
+  PROJECT:
   - x86 libs for utility/render
   - opengl_glx for linux compabillity
-  - camera entities would be pretty cool
+  - test the project on linux
+  
+  ENGINE:
+  - Pass in data folder
+  - Mouse input
+  - Shader resource manager
+  - Font resource manager
   - Optimization: Following of entities is very slow in lua 5x128 follow entities -> 20 ms
   - Optimization: SIMD on spritebatching
-  - Set the source rectangle for a sprite
-  - Add shaders and fonts to resource manager
   - Better debug view. Add voidstorm_debug.cpp. / Tweak debug variables from lua
-
+  
   PHYSICS:
   - Rotation
   - Friction between objects
+
+  RENDERING:
+  - Source rectangles for spritesheets
   
-  TODO (daniel): *Potential Future*
+  LUA BRIDGE
+  - Fill out the API
+  - Document the API
+  
+  NOTE (daniel): *Potential Future*
+  - Camera entities would be pretty cool
   - CRT-Emulation mode
   - Android (Touch Input etc..)
   - Polygon-Particle / Splines / Swirling particles
@@ -24,7 +38,6 @@
   - Menus! 
 */
 
-#include <SDL2/SDL.h>
 #include <Lua/lua.hpp>
 
 #include "voidstorm_config.h"

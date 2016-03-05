@@ -1,8 +1,8 @@
 #pragma once
 
-#include "voidstorm_spritebatch.h" //spritebatch
-#include "voidstorm_linerender.h" //linerenderer
-#include "voidstorm_particle.h" //particle.
+#include "voidstorm_spritebatch.h"
+#include "voidstorm_linerender.h"
+#include "voidstorm_particle.h"
 
 #define RENDERPASS_WORLD 0
 #define RENDERPASS_POSTPROCESS 1

@@ -74,7 +74,7 @@ private:
     };
 
     /* TODO (daniel): Remove the state from the struct and create multiple
-       venues for the emitter to live instead */
+       venues for the emitter to live instead. */
     
     struct ParticleEmitter
     {

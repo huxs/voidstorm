@@ -158,7 +158,7 @@ namespace api
     }
     
     /*
-      NOTE: VECTOR 2 FUNCTIONS
+      VECTOR 2 FUNCTIONS
     */
           
     inline void toVec2(lua_State* luaState, const glm::vec2& vec)
@@ -324,7 +324,7 @@ namespace api
     };
 
     /*
-      NOTE: COLOR FUNCTIONS
+      COLOR FUNCTIONS
     */
     
     inline void toColor(lua_State* luaState, const glm::vec4& color)

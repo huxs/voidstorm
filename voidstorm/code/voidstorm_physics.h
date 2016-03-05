@@ -24,6 +24,6 @@ struct PhysicsSimulator
     void resolveCollisions(World* world);
     void updateVelocity(World* world, float dt);
     
-    Manifold manifolds[1024];
+    Manifold manifolds[VOIDSTORM_PHYSICS_NUM_MANIFOLDS];
     uint32_t numManifolds;
 };

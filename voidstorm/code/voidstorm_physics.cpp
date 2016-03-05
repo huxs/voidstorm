@@ -199,7 +199,7 @@ void PhysicsSimulator::resolveCollisions(World* world)
 
 		// TODO (daniel): Friction between objects
 		
-		// TODO (daniel): Fix the flag issue
+		// TODO (daniel): Cleanup the flags
 		if(flagA == 0)
 		    world->physics.data.velocity[physicsA.index] -= invMassA * impulse;
 

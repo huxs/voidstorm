@@ -8,7 +8,7 @@
 static_assert((VOIDSTORM_APPLICATION_HEAP_SIZE
 	      + VOIDSTORM_RENDER_HEAP_SIZE
 	      + VOIDSTORM_APPLICATION_PERMANENT_STACK_SIZE
-	      + VOIDSTORM_APPLICATION_WORLD_STACK_SIZE) <= PERMANENT_STORAGE_SIZE,
+	      + VOIDSTORM_APPLICATION_GAME_STACK_SIZE) <= PERMANENT_STORAGE_SIZE,
 	      "The application is asking for more memory then the platform layer supplies.");
 
 static void printGetLastError()
@@ -50,7 +50,7 @@ bool initializeMemory(GameMemory* memory)
 #ifdef _HAVE_X64
     INT_PTR BaseAddress = 0x00000000003d0000;
 #else
-	INT_PTR BaseAddress = 0;
+    INT_PTR BaseAddress = 0;
 #endif
 
     memory->permanentStorageSize = PERMANENT_STORAGE_SIZE;

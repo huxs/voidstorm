@@ -108,6 +108,8 @@ T* ResourceMap<T>::lookup(const char* name)
     return result;
 }
 
+/* Texture Manager */
+
 struct Texture
 {
     dcfx::TextureHandle handle;
@@ -129,6 +131,8 @@ private:
     dcfx::Context* renderCtx;
     ResourceMap<Texture> textures;
 };
+
+/* Particle Manager */
 
 struct ParticleEmitterDescription
 {
@@ -170,7 +174,7 @@ public:
     ParticleEffectManager(dcutil::StackAllocator* _stack)
 	    : stack(_stack), effects(_stack) {}
 
-    // NOTE (daniel): Loads a particle effect description off the lua stack
+    // Loads a particle effect description off the lua stack
     ParticleEffectDescription* load(lua_State* luaState);
     
     void remove(ParticleEffectDescription* effect);

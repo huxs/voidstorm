@@ -18,7 +18,7 @@ glm::vec2 PolygonShape::computeCentroid()
 	glm::vec2 e0 = p1 - p0;
 	glm::vec2 e1 = p2 - p1;
 
-	/* NOTE (daniel):Returns the magnitude of the Z-vector after cross with e0,e1
+	/* Returns the magnitude of the Z-vector after cross with e0,e1
 	   treating the vectors on a plane in 3D. Thus the result is a scalar */       
 	float D = e0.x * e1.y - e0.y * e1.x;
 

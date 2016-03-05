@@ -30,7 +30,7 @@ inline bool Entity::operator!=(const Entity& other)
     return (this->id != other.id);
 }
 
-static const Entity Entity_Null{ ENTITY_INVALID };
+static const Entity Entity_Null { ENTITY_INVALID };
 
 class EntityManager
 {

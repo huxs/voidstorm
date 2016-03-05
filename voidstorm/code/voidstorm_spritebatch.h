@@ -1,6 +1,6 @@
 #pragma once
 
-// NOTE: Padding issues on android.
+// NOTE: Padding issues on android
 // XXX0 YY00 ZZZZ
 // XXXX YYY0 ZZ00
 
@@ -20,7 +20,7 @@ struct SpriteVertex
 };
 #endif
 
-// NOTE: Mabey convert this into SOA?
+// NOTE (daniel): Mabey convert this into SOA?
 struct SpriteInfo
 {	
     glm::vec4 destination;
@@ -111,7 +111,7 @@ private:
     uint32_t blendState;
     uint32_t samplerState;
 
-    // TODO (daniel): Later we probely want muliple fonts.
+    // NOTE (daniel): Later we probably want multiple fonts
     SpriteFont defaultFont;
 };
 

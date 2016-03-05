@@ -1,12 +1,10 @@
 #pragma once
 
-/* TODO:
-   Put this into the resource manager.
-*/
-
-static dcfx::ShaderHandle loadShader(dcfx::Context* renderCtx,
-				       const char* filepath,
-				       dcfx::ShaderType type)
+// TODO (daniel): Put this into the resource manager
+static dcfx::ShaderHandle
+loadShader(dcfx::Context* renderCtx,
+	   const char* filepath,
+	   dcfx::ShaderType type)
 {
 #ifndef ANDROID    
     tinystl::string assets(VOIDSTORM_SHADER_DIRECTORY);
