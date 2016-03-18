@@ -17,8 +17,24 @@ struct ContactManager
     ContactNode map[100];
 };
 
-struct PhysicsSimulator
+// NOTE (daniel): Add rotation and other state when we use it
+struct PhysicsState
 {
+    glm::vec2* position;
+};
+
+class PhysicsSimulator
+{
+public:
+    PhysicsSimulator();
+
+    void update(World* world, float dt, LineRenderer* linerenderer);
+
+    PhysicsState getInterpolatedState() { return interpolatedState; }
+    
+private:
+    static const float PhysicsHz;
+    
     void integrateVelocity(World* world, float dt);
     void narrowCollision(World* world, float dt, LineRenderer* linerenderer);
     void resolveCollisions(World* world);
@@ -26,4 +42,8 @@ struct PhysicsSimulator
     
     Manifold manifolds[VOIDSTORM_PHYSICS_NUM_MANIFOLDS];
     uint32_t numManifolds;
+
+    float accumulator;
+    PhysicsState previousState;
+    PhysicsState interpolatedState;    
 };

@@ -3,7 +3,7 @@
 const float Renderer::GaussBlurSigma = 3.0f;
 const float Renderer::GaussBlurTapSize = 1.0f;
 const float Renderer::Exposure = 0.0f;
-const float Renderer::ZoomFactor = 0.75f; // 0.5f
+const float Renderer::ZoomFactor = 0.75f;
 
 struct Vertex1P1UV
 {
@@ -128,9 +128,9 @@ Renderer::~Renderer()
     SDL_DestroyWindow(window);
 }
 
-void Renderer::setResolution(glm::ivec2 resolution)
+void Renderer::setResolution(glm::ivec2 _resolution)
 {
-    resolution = resolution;
+    resolution = _resolution;
     aspectRatio = (float)resolution.y / resolution.x;
     
     deleteFramebuffers();

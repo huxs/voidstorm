@@ -239,6 +239,9 @@ int main(int argv, char** argc)
 	world->responders.allocate(VOIDSTORM_RESPONDER_COMPONENT_COUNT);
 	world->sprites.allocate(VOIDSTORM_SPRITE_COMPONENT_COUNT);
 
+        TransformManager* tm = new(permStackAllocator->alloc(sizeof(TransformManager))) TransformManager;
+	tm->allocate(VOIDSTORM_TRANSFORM_COMPONENT_COUNT);
+	    
 	// Resource manager is a collection of managers for loading data of disk
 	ResourceManager* resources = new(permStackAllocator->alloc(sizeof(ResourceManager))) ResourceManager(permStackAllocator, renderer->getContext());
 
@@ -340,11 +343,11 @@ int main(int argv, char** argc)
 	while(state == State::RUNNING)
 	{
 	    TIME_BLOCK(Frame);
-	
+
 	    uint64_t currentTime = SDL_GetPerformanceCounter();
 	    gameInput.dt = (float)((currentTime - prevTime) / (double)SDL_GetPerformanceFrequency());
 	    prevTime = currentTime;
-
+	    
 	    state = handleEvents(gameInput.currentController, &activeController, renderer);
 
 	    gameInput.currentController->A.isPressed = SDL_GameControllerGetButton(activeController.pad, SDL_CONTROLLER_BUTTON_A);
@@ -502,14 +505,17 @@ int main(int argv, char** argc)
 		}
 	    }
 
-	    simulator->integrateVelocity(world, gameInput.dt);
-	    simulator->narrowCollision(world, gameInput.dt, renderer->getLineRenderer());
-	    simulator->resolveCollisions(world);
-	    simulator->updateVelocity(world, gameInput.dt);
+	    simulator->update(world, gameInput.dt, renderer->getLineRenderer());
 
 	    renderer->getParticleEngine()->update(gameInput.dt);
 
+	    glm::vec2* currentPosition = world->transforms.data.position;
+	    
+	    world->transforms.data.position = simulator->getInterpolatedState().position;
+	    
 	    renderer->render(world);
+
+	    world->transforms.data.position = currentPosition;
 
 	    renderer->frame();
 	
@@ -542,6 +548,7 @@ int main(int argv, char** argc)
     
 	lua_close(luaState);
 
+	tm->~TransformManager();
 	world->~World();
 	resources->~ResourceManager();
 	renderer->~Renderer();

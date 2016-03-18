@@ -4,11 +4,11 @@
   TODO (daniel):
 
   PROJECT:
-  - x86 libs for utility/render
   - opengl_glx for linux compabillity
   - test the project on linux
   
   ENGINE:
+  - Enable VSync
   - Pass in data folder
   - Mouse input
   - Shader resource manager

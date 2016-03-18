@@ -1,3 +1,5 @@
+
+
 void ContactManager::add(dcutil::StackAllocator* stack, uint32_t key, uint32_t reference)
 {
      int hash = dcutil::sdbm32((char*)&key, sizeof(key));
@@ -55,6 +57,49 @@ uint32_t ContactManager::lookup(uint32_t key)
     } while(node);
 
     return reference;
+}
+
+const float PhysicsSimulator::PhysicsHz = 1.0f / 60.0f;
+
+PhysicsSimulator::PhysicsSimulator()
+	    :
+	    numManifolds(0),
+	    accumulator(0)
+	{
+	    previousState.position = (glm::vec2*)g_permStackAllocator->alloc(VOIDSTORM_TRANSFORM_COMPONENT_COUNT * sizeof(glm::vec2));
+	    interpolatedState.position = (glm::vec2*)g_permStackAllocator->alloc(VOIDSTORM_TRANSFORM_COMPONENT_COUNT * sizeof(glm::vec2));
+	}
+
+void PhysicsSimulator::update(World* world, float dt, LineRenderer* linerenderer)
+{
+    accumulator += dt;
+
+    while(accumulator >= PhysicsHz)
+    {
+	// Store the previous state
+	memcpy(previousState.position, world->transforms.data.position, world->transforms.data.used * sizeof(glm::vec2));	
+
+	integrateVelocity(world, PhysicsHz);
+	narrowCollision(world, PhysicsHz, linerenderer);
+	resolveCollisions(world);
+	updateVelocity(world, PhysicsHz);
+	
+	accumulator -= PhysicsHz;
+    }
+
+    /* Since physics simulation is decoupled from the game loop the renderer can display an incorrect state.
+       We solve that by linear interpolating between the previous state and the current state.
+       http://gafferongames.com/game-physics/fix-your-timestep/
+    */
+    float alpha = accumulator / PhysicsHz;
+
+    for(uint32_t i = 1; i < world->transforms.data.used; ++i)
+    {
+	glm::vec2 pos = world->transforms.data.position[i];
+	glm::vec2 prevPos = previousState.position[i];
+
+        interpolatedState.position[i] = pos * alpha + prevPos * (1.0f - alpha);
+    }	    
 }
 
 void PhysicsSimulator::integrateVelocity(World* world, float dt)
