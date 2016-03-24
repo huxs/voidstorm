@@ -196,6 +196,11 @@ dcutil::StackAllocator* g_permStackAllocator;
 dcutil::StackAllocator* g_gameStackAllocator;
 HeapAllocator* g_heapAllocator;
 
+WORK_QUEUE_CALLBACK(TestWorker)
+{
+    PRINT("Thread %d\n", *((int*)data));
+}
+
 int main(int argv, char** argc)
 {
     if (SDL_Init(SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER) != 0)
@@ -208,6 +213,14 @@ int main(int argv, char** argc)
     initializeMemory(&gameMemory);
 
     {
+	// Create a work queue
+	WorkQueue queue = {};
+	WorkThreadContext contexts[8];
+	setupWorkQueue(&queue, 8, contexts);
+
+	//int test = 5;
+	//addEntry(&queue, TestWorker, &test);
+	
 	// Create permanent stack memory which is freed at shutdown
 	uint8_t* permStackPtr = (uint8_t*)gameMemory.permanentStorage + VOIDSTORM_APPLICATION_HEAP_SIZE + VOIDSTORM_RENDER_HEAP_SIZE;	
 	dcutil::StackAllocator* permStackAllocator = new(permStackPtr) dcutil::StackAllocator(permStackPtr + sizeof(dcutil::StackAllocator), VOIDSTORM_APPLICATION_PERMANENT_STACK_SIZE);
@@ -239,9 +252,6 @@ int main(int argv, char** argc)
 	world->responders.allocate(VOIDSTORM_RESPONDER_COMPONENT_COUNT);
 	world->sprites.allocate(VOIDSTORM_SPRITE_COMPONENT_COUNT);
 
-        TransformManager* tm = new(permStackAllocator->alloc(sizeof(TransformManager))) TransformManager;
-	tm->allocate(VOIDSTORM_TRANSFORM_COMPONENT_COUNT);
-	    
 	// Resource manager is a collection of managers for loading data of disk
 	ResourceManager* resources = new(permStackAllocator->alloc(sizeof(ResourceManager))) ResourceManager(permStackAllocator, renderer->getContext());
 
@@ -272,6 +282,7 @@ int main(int argv, char** argc)
 	gameInput.currentController = &gameInput.controllers[0];
 	gameInput.previousController = &gameInput.controllers[1];
 
+	// Put this context in game memory
 	VoidstormContext context;
 	context.renderer = renderer;
 	context.resources = resources;
@@ -488,6 +499,8 @@ int main(int argv, char** argc)
 #endif	    
 #endif	
 
+	    simulator->update(world, gameInput.dt, renderer->getLineRenderer());
+	    
 	    {
 		TIME_BLOCK(LuaUpdateAndRender);
 
@@ -504,8 +517,6 @@ int main(int argv, char** argc)
 		    PRINT("lua_pcall: %s\n", lua_tostring(luaState, -1));
 		}
 	    }
-
-	    simulator->update(world, gameInput.dt, renderer->getLineRenderer());
 
 	    renderer->getParticleEngine()->update(gameInput.dt);
 
@@ -548,7 +559,6 @@ int main(int argv, char** argc)
     
 	lua_close(luaState);
 
-	tm->~TransformManager();
 	world->~World();
 	resources->~ResourceManager();
 	renderer->~Renderer();

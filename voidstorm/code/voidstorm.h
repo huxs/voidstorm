@@ -16,6 +16,7 @@
   - Optimization: Following of entities is very slow in lua 5x128 follow entities -> 20 ms
   - Optimization: SIMD on spritebatching
   - Better debug view. Add voidstorm_debug.cpp. / Tweak debug variables from lua
+  - Better platform layer abstraction
   
   PHYSICS:
   - Rotation

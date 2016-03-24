@@ -34,7 +34,7 @@ function WormPart.destroy(self)
 
       newWorm.partCount = remainingParts
 
-      table.insert(World.enemies, newWorm)
+      table.insert(enemies, newWorm)
    end
 
    -- Destroy parts of the old worm
@@ -74,7 +74,7 @@ end
 
 function Worm.randomDestination(self)
 
-   self.destination = vec2.new(math.random() * World.size.x, math.random() * World.size.y);
+   self.destination = vec2.new(math.random() * size.x, math.random() * size.y);
 
 end
 
@@ -116,34 +116,36 @@ end
 
 function Worm.update(self)
 
-   self.timer = self.timer + dt
-   v = self.amplitude * math.sin(self.timer)
+   local s = sprites[self.entity]
 
-   self:rayTest()
+   s.timer = s.timer + dt
+   v = s.amplitude * math.sin(s.timer)
 
-   local d = self.destination - self:getPosition()
+   s:rayTest()
+
+   local d = s.destination - s:getPosition()
    local dir = d.normalize
    if #d < 15.0 then
-      self:randomDestination()
+      s:randomDestination()
    end
    
-   local force = vec2.new(dir.x * self.speed, (dir.y + v) * self.speed)
-   es.addForce(self.entity, force)
+   local force = vec2.new(dir.x * s.speed, (dir.y + v) * s.speed)
+   es.addForce(s.entity, force)
 
    local angle = math.atan2(dir.y, dir.x)
-   self:setRotation(-angle + 1.5 * math.pi)
+   s:setRotation(-angle + 1.5 * math.pi)
 
-   for i = 2, self.partCount do
+   for i = 2, s.partCount do
 
-      local dirr = (self.parts[i]:getPosition() - self.parts[i-1]:getPosition()).normalize
-      local tp = self.parts[i-1]:getPosition() + (dirr * self.offset)
-      local p = self.parts[i]:getPosition()      
+      local dirr = (s.parts[i]:getPosition() - s.parts[i-1]:getPosition()).normalize
+      local tp = s.parts[i-1]:getPosition() + (dirr * s.offset)
+      local p = s.parts[i]:getPosition()      
       p = p + (tp - p) * 0.3
 
-      self.parts[i]:setPosition(p)
+      s.parts[i]:setPosition(p)
 
       local angle = math.atan2(dirr.y, dirr.x)
-      self.parts[i]:setRotation(-angle + 1.5 * math.pi)
+      s.parts[i]:setRotation(-angle + 1.5 * math.pi)
 
    end
 

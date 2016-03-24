@@ -1,6 +1,5 @@
 #include "../voidstorm_platform.h"
 #include "../voidstorm_config.h"
-#include <assert.h>
 
 #define PERMANENT_STORAGE_SIZE Megabytes(256)
 #define TRANSIENT_STORAGE_SIZE Megabytes(128)
@@ -11,7 +10,8 @@ static_assert((VOIDSTORM_APPLICATION_HEAP_SIZE
 	      + VOIDSTORM_APPLICATION_GAME_STACK_SIZE) <= PERMANENT_STORAGE_SIZE,
 	      "The application is asking for more memory then the platform layer supplies.");
 
-static void printGetLastError()
+static void
+printGetLastError()
 {
 	DWORD errorMessageID = GetLastError();
 	if (errorMessageID == 0)
@@ -81,8 +81,6 @@ bool32 releaseMemory(GameMemory* memory)
 
     return success; 
 }
-
-
 
 bool setupRecordingState(GameMemory* memory, RecordingState* state)
 {
@@ -195,4 +193,90 @@ bool playbackInput(GameMemory* memory, RecordingState* state, GameInput* input)
 	}
     }
     return false;
+}
+
+DWORD WINAPI
+ThreadProc(LPVOID lpParameter)
+{
+    WorkThreadContext* context = (WorkThreadContext*)lpParameter;
+    WorkQueue* queue = context->queue;
+
+    for(;;)
+    {
+	if(doNextEntry(queue, context))
+	{
+	    WaitForSingleObjectEx(queue->semaphore, INFINITE, FALSE);
+	}
+    }
+}
+
+void
+setupWorkQueue(WorkQueue *queue, uint32_t threadCount, WorkThreadContext *contexts)
+{
+    queue->completionGoal = 0;
+    queue->completionCount = 0;
+    queue->nextEntryToWrite = 0;
+    queue->nextEntryToRead = 0;
+
+    uint32_t initialCount = 0;
+    queue->semaphore = CreateSemaphoreEx(0,
+					 initialCount,
+					 threadCount,
+					 0, 0, SEMAPHORE_ALL_ACCESS);
+
+    for(uint32_t i = 0; i < threadCount; ++i)
+    {
+	WorkThreadContext* context = contexts + i;
+	context->queue = queue;
+	
+	DWORD threadID;
+        HANDLE thread = CreateThread(0, 0, ThreadProc, context, 0, &threadID);
+	CloseHandle(thread);
+    }
+}
+
+void
+addEntry(WorkQueue *queue, WorkQueueCallback *callback, void *data)
+{
+    // TODO (daniel): Add InterlockedCompareExchange so any thread can add.
+    uint32_t newNextEntryToWrite = (queue->nextEntryToWrite + 1) % ARRAYSIZE(queue->entries);
+    assert(newNextEntryToWrite != queue->nextEntryToRead);
+
+    WorkQueueEntry *entry = &queue->entries[queue->nextEntryToWrite];
+    entry->data = data;
+    entry->callback = callback;
+
+    _WriteBarrier();
+    queue->nextEntryToWrite = newNextEntryToWrite;
+
+    // Signal the queue
+    ReleaseSemaphore(queue->semaphore, 1, 0);
+}
+
+bool
+doNextEntry(WorkQueue *queue, WorkThreadContext *context)
+{
+    bool sleep = false;
+
+    uint32_t originalEntryToRead = queue->nextEntryToRead;
+    uint32_t newNextEntryToRead = (originalEntryToRead + 1) % ARRAYSIZE(queue->entries);
+    if(originalEntryToRead != queue->nextEntryToWrite)
+    {
+	// Prevent two thread from reading the same entry
+	uint32_t index = _InterlockedCompareExchange((LONG volatile*)&queue->nextEntryToRead,
+						     newNextEntryToRead,
+						     originalEntryToRead);
+
+	if(index == originalEntryToRead)
+	{	
+	    WorkQueueEntry* entry = &queue->entries[index];
+	    entry->callback(queue, entry->data, context);
+	}
+    }
+    else
+    {
+        sleep = true;
+    }
+
+    return sleep;
 }

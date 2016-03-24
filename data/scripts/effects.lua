@@ -5,8 +5,8 @@ starsystem = ParticleEffect("starsystem")
 local starsystem_emitters_x = 20;
 local starsystem_emitters_y = 20;
 
-local starsystem_margin_x = (World.size.x / starsystem_emitters_x) * 2.0
-local starsystem_margin_y = (World.size.y / starsystem_emitters_y) * 2.0
+local starsystem_margin_x = (size.x / starsystem_emitters_x) * 2.0
+local starsystem_margin_y = (size.y / starsystem_emitters_y) * 2.0
 
 for y = 0, starsystem_emitters_y, 1 do
    for x = 0, starsystem_emitters_x, 1 do
