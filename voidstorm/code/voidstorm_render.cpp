@@ -11,42 +11,21 @@ struct Vertex1P1UV
     glm::vec2 uv;
 };
 
-Renderer::Renderer(HeapAllocator* heap)
+Renderer::Renderer(dcfx::Context *renderContext, GameMemory *memory)
+	: renderCtx(renderContext)
 {
-    // NOTE (daniel): Hardcoded resolution
+    isFullscreen = false;
     resolution.x = 1280;
     resolution.y = 720;
-    
-    isFullscreen = false;
-
-    Uint32 createWindowFlags = SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE;
-    window = SDL_CreateWindow("Voidstorm",
-			      SDL_WINDOWPOS_UNDEFINED,
-			      SDL_WINDOWPOS_UNDEFINED,
-			      resolution.x,
-			      resolution.y,
-			      createWindowFlags);
-
-   
-    if (window == nullptr) {
-	PRINT("Failed to create window %s. \n", SDL_GetError());
-	return;
-    }
-    
-    SDL_GetWindowSize(window, &resolution.x, &resolution.y);
-
     aspectRatio = (float)resolution.y / resolution.x;
 
-    SDL_SysWMinfo info;
-    SDL_VERSION(&info.version);
-    SDL_GetWindowWMInfo(window, &info);
-    HWND hwnd = info.info.win.window;
+    spritebatch = new(memory->permStackAllocator->alloc(sizeof(SpriteBatch)))  SpriteBatch(renderCtx);
+    linerenderer = new(memory->permStackAllocator->alloc(sizeof(LineRenderer)))  LineRenderer(renderCtx);
+    particle = new(memory->permStackAllocator->alloc(sizeof(ParticleEngine))) ParticleEngine(
+	memory->gameStackAllocator,
+	renderCtx,
+	spritebatch);
     
-    renderCtx = new(g_permStackAllocator->alloc(sizeof(dcfx::Context))) dcfx::Context(hwnd, heap);
-    spritebatch = new(g_permStackAllocator->alloc(sizeof(SpriteBatch)))  SpriteBatch(renderCtx);
-    linerenderer = new(g_permStackAllocator->alloc(sizeof(LineRenderer)))  LineRenderer(renderCtx);
-    particle = new(g_permStackAllocator->alloc(sizeof(ParticleEngine))) ParticleEngine(g_gameStackAllocator,
-											     renderCtx, spritebatch);    
     Vertex1P1UV* verts = (Vertex1P1UV*)renderCtx->frameAlloc(4 * sizeof(Vertex1P1UV));
     verts[0].pos = glm::vec3(-1.0f, -1.0f, 0.0f);
     verts[1].pos = glm::vec3(+1.0f, -1.0f, 0.0f);
@@ -123,9 +102,6 @@ Renderer::~Renderer()
     particle->~ParticleEngine();
     linerenderer->~LineRenderer();
     spritebatch->~SpriteBatch();
-    renderCtx->~Context();
-
-    SDL_DestroyWindow(window);
 }
 
 void Renderer::setResolution(glm::ivec2 _resolution)
@@ -145,7 +121,7 @@ glm::ivec2 Renderer::getResolution()
 void Renderer::toogleFullscreen()
 {
     isFullscreen = (isFullscreen ? false : true);
-    SDL_SetWindowFullscreen(window, isFullscreen);
+    //SDL_SetWindowFullscreen(window, isFullscreen);
 }
 
 void Renderer::setCameraPosition(const glm::vec2& position)
@@ -174,7 +150,7 @@ void Renderer::write(const char* text, const glm::vec2& position, bool32 inWorld
     }
 }
 
-void Renderer::render(World* world)
+void Renderer::render(World *world)
 {
     TIME_BLOCK(Render);
 
@@ -214,24 +190,24 @@ void Renderer::render(World* world)
 	spritebatch->write(text.text.c_str(), text.position);
     }
     
-    for(uint32_t i = 1; i < world->sprites.data.used; ++i)
+    for(uint32_t i = 1; i < world->sprites->data.used; ++i)
     {
-	Entity e = world->sprites.data.entities[i];
-	glm::vec4 color = world->sprites.data.color[i];
-	Texture* texture = world->sprites.data.texture[i];
-	glm::vec2 size = world->sprites.data.size[i];
-	glm::vec2 origin = world->sprites.data.origin[i];
+	Entity e = world->sprites->data.entities[i];
+	glm::vec4 color = world->sprites->data.color[i];
+	Texture* texture = world->sprites->data.texture[i];
+	glm::vec2 size = world->sprites->data.size[i];
+	glm::vec2 origin = world->sprites->data.origin[i];
 
 	if(texture == NULL)
 	    continue;
 	
-	TransformManager::Instance transform = world->transforms.lookup(e);
+	TransformManager::Instance transform = world->transforms->lookup(e);
 	assert(transform.index != 0);
 
-	glm::vec2 pos = world->transforms.data.position[transform.index];
-	float rotation = world->transforms.data.rotation[transform.index];
-	float depth = world->transforms.data.depth[transform.index];
-	float cscale = world->transforms.data.scale[transform.index]; 
+	glm::vec2 pos = world->transforms->data.position[transform.index];
+	float rotation = world->transforms->data.rotation[transform.index];
+	float depth = world->transforms->data.depth[transform.index];
+	float cscale = world->transforms->data.scale[transform.index]; 
 
 	// Perspective projection
 	glm::vec2 projectedXY = (1.0f / depth) * pos;

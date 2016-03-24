@@ -28,6 +28,12 @@ struct HeapAllocator : public dcutil::AllocatorI
     mspace ms;
 };
 
+struct LuaAllocatorUserData
+{
+    dcutil::PoolAllocator* pool;
+    mspace ms;
+};
+
 struct TinyStlAllocator
 {
     static void* static_allocate(size_t _bytes);

@@ -16,7 +16,6 @@
   - Optimization: Following of entities is very slow in lua 5x128 follow entities -> 20 ms
   - Optimization: SIMD on spritebatching
   - Better debug view. Add voidstorm_debug.cpp. / Tweak debug variables from lua
-  - Better platform layer abstraction
   
   PHYSICS:
   - Rotation
@@ -26,6 +25,7 @@
   - Source rectangles for spritesheets
   
   LUA BRIDGE
+  - Refactor and make thread safe..
   - Fill out the API
   - Document the API
   
@@ -43,7 +43,6 @@
 
 #include "voidstorm_config.h"
 #include "voidstorm_platform.h"
-#include "voidstorm_alloc.h"
 
 #define TINYSTL_ALLOCATOR TinyStlAllocator
 #include <TINYSTL/vector.h>
@@ -52,10 +51,7 @@
 
 #include <dcutil/handleallocator.h>
 #include <dcutil/hash.h>
-#include <dcutil/allocator.h>
 #include <dcutil/color.h>
-
-#include <dcfx/context.h>
 
 #include "voidstorm_misc.h"
 #include "voidstorm_math.h"
@@ -68,28 +64,41 @@
 #include "voidstorm_physics.h"
 #include "voidstorm_render.h"
 
-extern HeapAllocator* g_heapAllocator;
-extern dcutil::StackAllocator* g_permStackAllocator;
-extern dcutil::StackAllocator* g_gameStackAllocator;
+#ifdef VOIDSTORM_INTERNAL
+struct LuaFile
+{
+    char name[180];
+    char path[180];
+    uint32_t hash;
+    FileTime timeWhenLoaded;
+};
+#endif
 
 struct World
-{
-    void reset();
-
-    EntityManager entities;
-    TransformManager transforms;
-    PhysicsManager physics;
-    CollisionManager collisions;
-    CollisionResponderManager responders;
-    SpriteManager sprites;
+{    
+    EntityManager *entities;
+    TransformManager *transforms;
+    PhysicsManager *physics;
+    CollisionManager *collisions;
+    CollisionResponderManager *responders;
+    SpriteManager *sprites;
 };
 
 struct VoidstormContext
 {
-    Renderer* renderer;
-    ResourceManager* resources;
+    WorkQueue *queue;
+    PhysicsSimulator *simulator;
+    Renderer *renderer;
+    World world;
+    ResourceManager *resources;
+    LuaAllocatorUserData allocatorUserData;
+    lua_State *luaState;
     GameInput* input;
-    World* world;
+    
+#ifdef VOIDSTORM_INTERNAL
+    tinystl::vector<LuaFile> luaFiles;
+#endif
+    
 };
 
 

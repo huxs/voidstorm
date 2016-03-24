@@ -1,9 +1,3 @@
-struct LuaAllocatorUserData
-{
-    dcutil::PoolAllocator* pool;
-    mspace ms;
-};
-
 void* LuaAllocatorCallback(void* ud, void* ptr, size_t osize, size_t nsize)
 {
     LuaAllocatorUserData* data = (LuaAllocatorUserData*)ud;
@@ -63,7 +57,7 @@ void* LuaAllocatorCallback(void* ud, void* ptr, size_t osize, size_t nsize)
     return pRet;
 }
 
-//extern HeapAllocator* g_heapAllocator;
+extern HeapAllocator* g_heapAllocator;
 
 void* TinyStlAllocator::static_allocate(size_t _bytes)
 {

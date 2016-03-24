@@ -1,6 +1,8 @@
 #pragma once
 
 #include <SDL2/SDL.h>
+#include "voidstorm_alloc.h"
+#include <dcfx/context.h>
 #include <dcutil/macros.h>
 
 #include <stdint.h>
@@ -67,32 +69,33 @@ struct TimedBlock
 
 struct GameMemory
 {
-    void* permanentStorage;
+    void *permanentStoragePtr;
     size_t permanentStorageSize;
-    void* transientStorage;
+    void *transientStoragePtr;
     size_t transientStorageSize;
+
+    HeapAllocator *heapAllocator;
+    dcutil::StackAllocator *permStackAllocator;
+    dcutil::StackAllocator *gameStackAllocator;
+
+    // TODO (daniel): Rewrite the lua allocator to use a HeapAllocator we do not need to store an mspace
+    mspace ms;
 };
 
+// Callback functions
+bool initializeGame(GameMemory *memory, dcfx::Context *renderContext);
+int updateGame(GameMemory *memory, GameInput *input);
+int shutdownGame(GameMemory *memory);
+// TODO (daniel): void resizeWindow(uint32_t w, uint32_t h);
+// TODO (daniel): void playbackCompleted(); 
+
+// File operations
 bool getLastWriteTime(char *filename, FileTime *filetime);
 int compareFileTime(FileTime& a, FileTime& b);
+// TODO (daniel): void readFile();
 
-bool initializeMemory(GameMemory *memory);
-bool32 releaseMemory(GameMemory *memory);
-
-bool setupRecordingState(GameMemory *memory, RecordingState *state);
-void endRecordingState(RecordingState *state);
-
-void beginRecord(GameMemory *memory, RecordingState *state);
-void endRecord(RecordingState *state);
-
-void beginPlayback(GameMemory *memory, RecordingState *state);
-void endPlayback(RecordingState *state);
-
-void recordInput(RecordingState* state, GameInput *input);
-bool playbackInput(GameMemory *memory, RecordingState *state, GameInput* input);
-
+// Threadpool operations
 void setupWorkQueue(WorkQueue* queue, uint32_t threadCount, WorkThreadContext *contexts);
-
 void addEntry(WorkQueue *queue, WorkQueueCallback *callback, void *data);
 bool doNextEntry(WorkQueue *queue, WorkThreadContext *context);
-//void completeAllWork(WorkQueue* queue);
+

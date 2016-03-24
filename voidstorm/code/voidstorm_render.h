@@ -18,7 +18,7 @@ struct World;
 class Renderer
 {
 public:
-    Renderer(HeapAllocator* heap);
+    Renderer(dcfx::Context *renderContext, GameMemory *memory);
     ~Renderer();
 
     void setResolution(glm::ivec2 resolution);
@@ -35,7 +35,8 @@ public:
 
     void write(const char* text, const glm::vec2& position, bool32 inWorld);
     
-    void render(World* world);
+    void render(World *world);
+		
     void frame();
     
 private:
@@ -51,7 +52,6 @@ private:
     static const float Exposure;
     static const float ZoomFactor;
 
-    SDL_Window* window;   
     dcfx::Context* renderCtx;
     SpriteBatch* spritebatch;
     LineRenderer* linerenderer;

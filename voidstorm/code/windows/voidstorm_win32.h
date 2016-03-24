@@ -1,6 +1,11 @@
 #pragma once
 
 #include <windows.h>
+#include <SDL2/SDL.h>
+
+#define APPLICATION_STORAGE_RESERVED_SIZE Megabytes(1)
+#define PERMANENT_STORAGE_SIZE Megabytes(256)
+#define TRANSIENT_STORAGE_SIZE Megabytes(128)
 
 struct FileTime
 {
@@ -34,4 +39,19 @@ struct WorkQueue
     HANDLE semaphore;
 
     WorkQueueEntry entries[256];
+};
+
+struct Controller
+{
+    Controller()
+	    : pad(NULL) {};
+	
+    SDL_GameController* pad;
+    int index;
+};
+
+enum State
+{
+    RUNNING,
+    QUIT
 };

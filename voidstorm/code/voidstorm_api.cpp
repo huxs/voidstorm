@@ -4,15 +4,7 @@
     lua_settable(L, -3);
 
 #ifdef VOIDSTORM_INTERNAL
-struct LuaFile
-{
-    char name[180];
-    char path[180];
-    uint32_t hash;
-    FileTime timeWhenLoaded;
-};
-
-extern tinystl::vector<LuaFile>* g_luaFiles;
+extern tinystl::vector<LuaFile> *g_luaFiles;
 #endif
 
 namespace api
@@ -122,19 +114,19 @@ namespace api
 	{
 	    file.hash = dcutil::fnv32(&file.name[0]);
 
-		bool newFile = true;
+	    bool newFile = true;
 	    for (size_t i = 0; i < g_luaFiles->size(); ++i)
 	    {
 		LuaFile& loadedFile = g_luaFiles->operator[](i);
 		if (loadedFile.hash == file.hash)
 		{
 		    loadedFile.timeWhenLoaded = file.timeWhenLoaded;
-			newFile = false;
+		    newFile = false;
 		}
 	    }
 
-		if(newFile)
- 	    g_luaFiles->push_back(file);
+	    if(newFile)
+		g_luaFiles->push_back(file);
 	}
 #endif
 #endif
@@ -155,6 +147,12 @@ namespace api
 	VoidstormContext* context = (VoidstormContext*)lua_topointer(luaState, -1);
 	lua_pop(luaState, 1);
 	return context;
+    }
+
+    inline World* getWorld(lua_State* luaState)
+    {
+	VoidstormContext* context = getContext(luaState);
+	return &context->world;
     }
     
     /*
@@ -698,23 +696,23 @@ namespace api
     */ 
     static int getNrOfEntities(lua_State* luaState)
     {
-	World* world = getContext(luaState)->world;
+	World* world = getWorld(luaState);
 
-	lua_pushinteger(luaState, world->entities.getNrOfEntities());
+	lua_pushinteger(luaState, world->entities->getNrOfEntities());
     
 	return 1;
     }
 
     static int createEntity(lua_State* luaState)
     {
-	World* world = getContext(luaState)->world;
-	Entity entity = world->entities.create();
+	World* world = getWorld(luaState);
+	Entity entity = world->entities->create();
 
 	// A entity is always accompanied with a transform component
-	TransformManager::Instance instance = world->transforms.lookup(entity);
+	TransformManager::Instance instance = world->transforms->lookup(entity);
 	if(instance.index == 0)
 	{
-	    instance = world->transforms.create(entity);
+	    instance = world->transforms->create(entity);
 	}
 
 	lua_pushinteger(luaState, entity.id);
@@ -726,42 +724,42 @@ namespace api
 	VoidstormContext* context = getContext(luaState);
 	Entity entity = { (uint32_t)lua_tointeger(luaState, 1) };
 
-	context->world->transforms.destroy(context->world->transforms.lookup(entity));
-	context->world->physics.destroy(context->world->physics.lookup(entity));
-	context->world->sprites.destroy(context->world->sprites.lookup(entity));
-	context->world->responders.destroy(context->world->responders.lookup(entity));
-	context->world->collisions.destroy(context->world->collisions.lookup(entity));
-	context->world->entities.destroy(entity);
+	context->world.transforms->destroy(context->world.transforms->lookup(entity));
+	context->world.physics->destroy(context->world.physics->lookup(entity));
+	context->world.sprites->destroy(context->world.sprites->lookup(entity));
+	context->world.responders->destroy(context->world.responders->lookup(entity));
+	context->world.collisions->destroy(context->world.collisions->lookup(entity));
+	context->world.entities->destroy(entity);
 
 	return 0;
     }
 
     static int printEntity(lua_State* luaState)
     {
-	World* world = getContext(luaState)->world;
+	World* world = getWorld(luaState);
 	Entity entity = { (uint32_t)lua_tointeger(luaState, 1) };
 
 	const char* prnt = "Index: %d - Generation %d\n";
 	PRINT(prnt, entity.index(), entity.generation());
 
-	if(world->collisions.lookup(entity).index != 0) PRINT("Has Collision.\n");
-	if(world->responders.lookup(entity).index != 0) PRINT("Has Responder.\n");
-	if(world->transforms.lookup(entity).index != 0) PRINT("Has Transform.\n");
-	if(world->physics.lookup(entity).index != 0) PRINT("Has Physics.\n");
-	if(world->sprites.lookup(entity).index != 0) PRINT("Has Sprite..\n");
+	if(world->collisions->lookup(entity).index != 0) PRINT("Has Collision.\n");
+	if(world->responders->lookup(entity).index != 0) PRINT("Has Responder.\n");
+	if(world->transforms->lookup(entity).index != 0) PRINT("Has Transform.\n");
+	if(world->physics->lookup(entity).index != 0) PRINT("Has Physics->\n");
+	if(world->sprites->lookup(entity).index != 0) PRINT("Has Sprite..\n");
     
 	return 0;
     }
 
     static int addSprite(lua_State* luaState)
     {
-	World* world = getContext(luaState)->world;
+	World* world = getWorld(luaState);
 	Entity entity = { (uint32_t)lua_tointeger(luaState, 1) };
 
-	SpriteManager::Instance instance = world->sprites.lookup(entity);
+	SpriteManager::Instance instance = world->sprites->lookup(entity);
 	if(instance.index == 0)
 	{
-	    instance = world->sprites.create(entity);
+	    instance = world->sprites->create(entity);
 	}
 
 	lua_pushinteger(luaState, instance.index);
@@ -770,13 +768,13 @@ namespace api
 
     static int addPhysics(lua_State* luaState)
     {
-	World* world = getContext(luaState)->world;
+	World* world = getWorld(luaState);
 	Entity entity = { (uint32_t)lua_tointeger(luaState, 1) };
 
-	PhysicsManager::Instance instance = world->physics.lookup(entity);
+	PhysicsManager::Instance instance = world->physics->lookup(entity);
 	if(instance.index == 0)
 	{
-	    instance = world->physics.create(entity);
+	    instance = world->physics->create(entity);
 	}
 
 	return 0;
@@ -784,15 +782,15 @@ namespace api
 
     static int addCollision(lua_State* luaState)
     {
-	World* world = getContext(luaState)->world;
+	World* world = getWorld(luaState);
 	Entity entity = { (uint32_t)lua_tointeger(luaState, 1) };
 	uint32_t type = (uint32_t)lua_tointeger(luaState, 2);
 	uint32_t mask = (uint32_t)lua_tointeger(luaState, 3);
 
-	CollisionManager::Instance instance = world->collisions.lookup(entity);
+	CollisionManager::Instance instance = world->collisions->lookup(entity);
 	if(instance.index == 0)
 	{
-	    instance = world->collisions.create(entity, type, mask);
+	    instance = world->collisions->create(entity, type, mask);
 	}
 	
 	return 0;
@@ -800,14 +798,14 @@ namespace api
 
     static int setDisabled(lua_State* luaState)
     {
-	World* world = getContext(luaState)->world;
+	World* world = getWorld(luaState);
 	Entity entity = { (uint32_t)lua_tointeger(luaState, 1) };
 	bool32 isDisabled = lua_toboolean(luaState, 2);
 
-	PhysicsManager::Instance instance = world->physics.lookup(entity);
+	PhysicsManager::Instance instance = world->physics->lookup(entity);
 	if(instance.index != 0)
 	{
-	    world->physics.setFlag(instance, (uint32_t)isDisabled);
+	    world->physics->setFlag(instance, (uint32_t)isDisabled);
 	}
 	return 0;
     }
@@ -818,13 +816,13 @@ namespace api
 	Entity entity = { (uint32_t)lua_tointeger(luaState, 1) };
 	float radius = (float)lua_tonumber(luaState, 2);
 
-	CollisionManager::Instance instance = context->world->collisions.lookup(entity);
+	CollisionManager::Instance instance = context->world.collisions->lookup(entity);
 	if(instance.index != 0)
 	{
-	    TransformManager::Instance tinstance = context->world->transforms.lookup(entity);
-	    glm::vec2 position = context->world->transforms.getPosition(tinstance);
+	    TransformManager::Instance tinstance = context->world.transforms->lookup(entity);
+	    glm::vec2 position = context->world.transforms->getPosition(tinstance);
 	    
-	    context->world->collisions.createCircleShape(instance, radius, position);
+	    context->world.collisions->createCircleShape(instance, radius, position);
 	}
 
 	return 0;
@@ -836,13 +834,13 @@ namespace api
 	Entity entity = { (uint32_t)lua_tointeger(luaState, 1) };
 	glm::vec2 dir = *(glm::vec2*)lua_touserdata(luaState, 2);
 
-	CollisionManager::Instance instance = context->world->collisions.lookup(entity);
+	CollisionManager::Instance instance = context->world.collisions->lookup(entity);
 	if(instance.index != 0)
 	{
-	    TransformManager::Instance tinstance = context->world->transforms.lookup(entity);
-	    glm::vec2 position = context->world->transforms.getPosition(tinstance);
+	    TransformManager::Instance tinstance = context->world.transforms->lookup(entity);
+	    glm::vec2 position = context->world.transforms->getPosition(tinstance);
 	    
-	    context->world->collisions.createRayShape(instance, dir, position);
+	    context->world.collisions->createRayShape(instance, dir, position);
 	}
 
 	return 0;
@@ -861,16 +859,16 @@ namespace api
 	}
 
 	glm::vec2 position;
-	TransformManager::Instance transformInstance = context->world->transforms.lookup(entity);
+	TransformManager::Instance transformInstance = context->world.transforms->lookup(entity);
 	if(transformInstance.index != 0)
 	{
-	    position = context->world->transforms.getPosition(transformInstance);
+	    position = context->world.transforms->getPosition(transformInstance);
 	}
 	
-	CollisionManager::Instance instance = context->world->collisions.lookup(entity);
+	CollisionManager::Instance instance = context->world.collisions->lookup(entity);
 	if(instance.index != 0)
 	{
-	    context->world->collisions.createPolygonShape(instance, vertices, count, position);
+	    context->world.collisions->createPolygonShape(instance, vertices, count, position);
 	}
 
 	return 0;
@@ -878,13 +876,13 @@ namespace api
 
     static int addResponder(lua_State* luaState)
     {
-	World* world = getContext(luaState)->world;
+	World* world = getWorld(luaState);
 	Entity entity = { (uint32_t)lua_tointeger(luaState, 1) };
     
-	CollisionResponderManager::Instance instance = world->responders.lookup(entity);
+	CollisionResponderManager::Instance instance = world->responders->lookup(entity);
 	if(instance.index == 0)
 	{
-	    instance = world->responders.create(entity);
+	    instance = world->responders->create(entity);
 	}
 
 	return 0;
@@ -892,67 +890,67 @@ namespace api
 
     static int setType(lua_State* luaState)
     {
-	World* world = getContext(luaState)->world;
-	CollisionManager::Instance instance = world->collisions.lookup({ (uint32_t)lua_tointeger(luaState, 1) });
+	World* world = getWorld(luaState);
+	CollisionManager::Instance instance = world->collisions->lookup({ (uint32_t)lua_tointeger(luaState, 1) });
 	int type = (int)lua_tointeger(luaState, 2);
 
-	world->collisions.setType(instance, type);
+	world->collisions->setType(instance, type);
 	return 0;
     }
 
     static int getType(lua_State* luaState)
     {
-	World* world = getContext(luaState)->world;
-	CollisionManager::Instance instance = world->collisions.lookup({ (uint32_t)lua_tointeger(luaState, 1) });
+	World* world = getWorld(luaState);
+	CollisionManager::Instance instance = world->collisions->lookup({ (uint32_t)lua_tointeger(luaState, 1) });
 
-	uint32_t type = world->collisions.getType(instance);
+	uint32_t type = world->collisions->getType(instance);
 	lua_pushinteger(luaState, type);
 	return 1;
     }
 
     static int setMask(lua_State* luaState)
     {
-	World* world = getContext(luaState)->world;
-	CollisionManager::Instance instance = world->collisions.lookup({ (uint32_t)lua_tointeger(luaState, 1) });
+	World* world = getWorld(luaState);
+	CollisionManager::Instance instance = world->collisions->lookup({ (uint32_t)lua_tointeger(luaState, 1) });
 	int mask = (int)lua_tointeger(luaState, 2);
 
-	world->collisions.setMask(instance, mask);
+	world->collisions->setMask(instance, mask);
 	return 0;
     }
 
     static int setOffset(lua_State* luaState)
     {
-	World* world = getContext(luaState)->world;
-	CollisionManager::Instance instance = world->collisions.lookup({ (uint32_t)lua_tointeger(luaState, 1) });
+	World* world = getWorld(luaState);
+	CollisionManager::Instance instance = world->collisions->lookup({ (uint32_t)lua_tointeger(luaState, 1) });
 	glm::vec2* v = (glm::vec2*)lua_touserdata(luaState, 2);
 	
-	world->collisions.setOffset(instance, *v);
+	world->collisions->setOffset(instance, *v);
 	return 0;
     }
 
     static int setRadius(lua_State* luaState)
     {
-	World* world = getContext(luaState)->world;
-	CollisionManager::Instance instance = world->collisions.lookup({ (uint32_t)lua_tointeger(luaState, 1) });
+	World* world = getWorld(luaState);
+	CollisionManager::Instance instance = world->collisions->lookup({ (uint32_t)lua_tointeger(luaState, 1) });
 	float radius = (float)lua_tonumber(luaState, 2);
     
-	world->collisions.setRadius(instance, radius);
+	world->collisions->setRadius(instance, radius);
 	return 0;
     }
 
     static int setDirection(lua_State* luaState)
     {
-	World* world = getContext(luaState)->world;
+	World* world = getWorld(luaState);
 	Entity entity = { (uint32_t)lua_tointeger(luaState, 1) };
 	glm::vec2 direction = *(glm::vec2*)lua_touserdata(luaState, 2);
 
-	CollisionManager::Instance instance = world->collisions.lookup(entity);
+	CollisionManager::Instance instance = world->collisions->lookup(entity);
 	if(instance.index != 0)
 	{
-	    TransformManager::Instance tinstance = world->transforms.lookup(entity);
-	    glm::vec2 position = world->transforms.getPosition(tinstance);
+	    TransformManager::Instance tinstance = world->transforms->lookup(entity);
+	    glm::vec2 position = world->transforms->getPosition(tinstance);
 	    
-	    world->collisions.setDirection(instance, direction, position);
+	    world->collisions->setDirection(instance, direction, position);
 	}
 	
 	return 0;
@@ -960,17 +958,17 @@ namespace api
     
     static int getCollidedEntity(lua_State* luaState)
     {    
-	World* world = getContext(luaState)->world;
-	CollisionResponderManager::Instance instance = world->responders.lookup({ (uint32_t)lua_tointeger(luaState, 1) });
+	World* world = getWorld(luaState);
+	CollisionResponderManager::Instance instance = world->responders->lookup({ (uint32_t)lua_tointeger(luaState, 1) });
 
-	int& entityCount = world->responders.data.collidedWith[instance.index].entityCount;
+	int& entityCount = world->responders->data.collidedWith[instance.index].entityCount;
 	
 	lua_createtable(luaState, entityCount, 0);
 	for (int i = 0; i < entityCount; i++)
 	{
-	    Entity& e = world->responders.data.collidedWith[instance.index].entity[i];
-	    glm::vec2 pos = world->responders.data.collidedWith[instance.index].position[i];
-	    glm::vec2 normal = world->responders.data.collidedWith[instance.index].normal[i];
+	    Entity& e = world->responders->data.collidedWith[instance.index].entity[i];
+	    glm::vec2 pos = world->responders->data.collidedWith[instance.index].position[i];
+	    glm::vec2 normal = world->responders->data.collidedWith[instance.index].normal[i];
 	    
 	    lua_createtable(luaState, 3, 0);	 
 	     
@@ -998,199 +996,199 @@ namespace api
 	Entity e = { (uint32_t)lua_tointeger(luaState, 1) };
 	glm::vec2 newPosition = *(glm::vec2*)lua_touserdata(luaState, 2);
 
-	TransformManager::Instance transformInstance = context->world->transforms.lookup(e);
-	CollisionManager::Instance collisionInstance = context->world->collisions.lookup(e);
+	TransformManager::Instance transformInstance = context->world.transforms->lookup(e);
+	CollisionManager::Instance collisionInstance = context->world.collisions->lookup(e);
 
 	// When moving entities directly we cannot rely on the physics system to move the collision box, so we do it ourself here
 	if(collisionInstance.index != 0)
 	{
-	    glm::vec2 oldPosition = context->world->transforms.getPosition(transformInstance);
+	    glm::vec2 oldPosition = context->world.transforms->getPosition(transformInstance);
 	    glm::vec2 displacement = newPosition - oldPosition;
 	    
 	    if(glm::length(displacement) > 0)
 	    {
-		DbvtNode* node = context->world->collisions.getNode(collisionInstance);
+		DbvtNode* node = context->world.collisions->getNode(collisionInstance);
 		
-	        context->world->collisions.tree.moveProxy(node, displacement);
+	        context->world.collisions->tree.moveProxy(node, displacement);
 	    }
 	}
 
-	context->world->transforms.setPosition(transformInstance, newPosition);
+	context->world.transforms->setPosition(transformInstance, newPosition);
 	assert(newPosition == newPosition && "API SetPosition Failed");
 	return 0;
     }
 
     static int getPosition(lua_State* luaState)
     {
-	World* world = getContext(luaState)->world;
-	TransformManager::Instance instance = world->transforms.lookup({ (uint32_t)lua_tointeger(luaState, 1) });
+	World* world = getWorld(luaState);
+	TransformManager::Instance instance = world->transforms->lookup({ (uint32_t)lua_tointeger(luaState, 1) });
 
-	glm::vec2 pos = world->transforms.getPosition(instance);
+	glm::vec2 pos = world->transforms->getPosition(instance);
 	toVec2(luaState, pos);
 	return 1;
     }
 
     static int setRotation(lua_State* luaState)
     {
-	World* world = getContext(luaState)->world;
-	TransformManager::Instance instance = world->transforms.lookup({ (uint32_t)lua_tointeger(luaState, 1) });
+	World* world = getWorld(luaState);
+	TransformManager::Instance instance = world->transforms->lookup({ (uint32_t)lua_tointeger(luaState, 1) });
 	float value = (float)lua_tonumber(luaState, 2);
 	
-	world->transforms.setRotation(instance, value);
+	world->transforms->setRotation(instance, value);
 	return 0;
     }
 
     static int getRotation(lua_State* luaState)
     {
-	World* world = getContext(luaState)->world;
-	TransformManager::Instance instance = world->transforms.lookup({ (uint32_t)lua_tointeger(luaState, 1) });
+	World* world = getWorld(luaState);
+	TransformManager::Instance instance = world->transforms->lookup({ (uint32_t)lua_tointeger(luaState, 1) });
 
-	float value  = world->transforms.getRotation(instance);    
+	float value  = world->transforms->getRotation(instance);    
 	lua_pushnumber(luaState, value);
 	return 1;
     }
 
     static int setDepth(lua_State* luaState)
     {
-	World* world = getContext(luaState)->world;
-	TransformManager::Instance instance = world->transforms.lookup({ (uint32_t)lua_tointeger(luaState, 1) });
+	World* world = getWorld(luaState);
+	TransformManager::Instance instance = world->transforms->lookup({ (uint32_t)lua_tointeger(luaState, 1) });
 	float value = (float)lua_tonumber(luaState, 2);
 	
-	world->transforms.setDepth(instance, value);
+	world->transforms->setDepth(instance, value);
 	return 0;
     }
 
 
     static int getDepth(lua_State* luaState)
     {
-	World* world = getContext(luaState)->world;
-	TransformManager::Instance instance = world->transforms.lookup({ (uint32_t)lua_tointeger(luaState, 1) });
+	World* world = getWorld(luaState);
+	TransformManager::Instance instance = world->transforms->lookup({ (uint32_t)lua_tointeger(luaState, 1) });
 
-	float value  = world->transforms.getDepth(instance);    
+	float value  = world->transforms->getDepth(instance);    
 	lua_pushnumber(luaState, value);
 	return 1;
     }
 
     static int setScale(lua_State* luaState)
     {
-	World* world = getContext(luaState)->world;
-	TransformManager::Instance instance = world->transforms.lookup({ (uint32_t)lua_tointeger(luaState, 1) });
+	World* world = getWorld(luaState);
+	TransformManager::Instance instance = world->transforms->lookup({ (uint32_t)lua_tointeger(luaState, 1) });
 	float value = (float)lua_tonumber(luaState, 2);
 
-	world->transforms.setScale(instance, value);
+	world->transforms->setScale(instance, value);
 	return 0;
     }
 
 
     static int getScale(lua_State* luaState)
     {
-	World* world = getContext(luaState)->world;
-	TransformManager::Instance instance = world->transforms.lookup({ (uint32_t)lua_tointeger(luaState, 1) });
+	World* world = getWorld(luaState);
+	TransformManager::Instance instance = world->transforms->lookup({ (uint32_t)lua_tointeger(luaState, 1) });
 
-	float value  = world->transforms.getScale(instance);   
+	float value  = world->transforms->getScale(instance);   
 	lua_pushnumber(luaState, value);
 	return 1;
     }
     
     static int setTexture(lua_State* luaState)
     {
-	World* world = getContext(luaState)->world;
-	SpriteManager::Instance instance = world->sprites.lookup({ (uint32_t)lua_tointeger(luaState, 1) });
+	World* world = getWorld(luaState);
+	SpriteManager::Instance instance = world->sprites->lookup({ (uint32_t)lua_tointeger(luaState, 1) });
 	Texture** texture = (Texture**)lua_touserdata(luaState, 2);
 
-	world->sprites.setTexture(instance, *texture);
+	world->sprites->setTexture(instance, *texture);
 	return 0;
     }
     
     static int setOrigin(lua_State* luaState)
     {
-	World* world = getContext(luaState)->world;
-	SpriteManager::Instance instance = world->sprites.lookup({ (uint32_t)lua_tointeger(luaState, 1) });
+	World* world = getWorld(luaState);
+	SpriteManager::Instance instance = world->sprites->lookup({ (uint32_t)lua_tointeger(luaState, 1) });
 	glm::vec2* origin = (glm::vec2*)lua_touserdata(luaState, 2);
 
-	world->sprites.setOrigin(instance, *origin);
+	world->sprites->setOrigin(instance, *origin);
 	return 0;
     }
 
     static int setSize(lua_State* luaState)
     {
-	World* world = getContext(luaState)->world;
-	SpriteManager::Instance instance = world->sprites.lookup({ (uint32_t)lua_tointeger(luaState, 1) });
+	World* world = getWorld(luaState);
+	SpriteManager::Instance instance = world->sprites->lookup({ (uint32_t)lua_tointeger(luaState, 1) });
 	glm::vec2* size = (glm::vec2*)lua_touserdata(luaState, 2);
 
-	world->sprites.setSize(instance, *size);
+	world->sprites->setSize(instance, *size);
 	
 	return 0;
     }
 
     static int setColor(lua_State* luaState)
     {
-	World* world = getContext(luaState)->world;
-	SpriteManager::Instance instance = world->sprites.lookup({ (uint32_t)lua_tointeger(luaState, 1) });
+	World* world = getWorld(luaState);
+	SpriteManager::Instance instance = world->sprites->lookup({ (uint32_t)lua_tointeger(luaState, 1) });
 	glm::vec4* color = (glm::vec4*)lua_touserdata(luaState, 2);
     
-	world->sprites.setColor(instance, *color);	
+	world->sprites->setColor(instance, *color);	
 	return 0;
     }
 
     static int getColor(lua_State* luaState)
     {
-	World* world = getContext(luaState)->world;
-	SpriteManager::Instance instance = world->sprites.lookup({ (uint32_t)lua_tointeger(luaState, 1) });
+	World* world = getWorld(luaState);
+	SpriteManager::Instance instance = world->sprites->lookup({ (uint32_t)lua_tointeger(luaState, 1) });
 	
-	glm::vec4 color = world->sprites.getColor(instance);
+	glm::vec4 color = world->sprites->getColor(instance);
 	toColor(luaState, color);
 	return 1;
     }
 
     static int setMass(lua_State* luaState)
     {
-	World* world = getContext(luaState)->world;
-	PhysicsManager::Instance instance = world->physics.lookup({ (uint32_t)lua_tointeger(luaState, 1) });
+	World* world = getWorld(luaState);
+	PhysicsManager::Instance instance = world->physics->lookup({ (uint32_t)lua_tointeger(luaState, 1) });
 	float mass = (float)lua_tonumber(luaState, 2);
 
-	world->physics.setMass(instance, mass);
+	world->physics->setMass(instance, mass);
 	return 0;
     }
 
     static int setRestitution(lua_State* luaState)
     {
-	World* world = getContext(luaState)->world;
-	PhysicsManager::Instance instance = world->physics.lookup({ (uint32_t)lua_tointeger(luaState, 1) });
+	World* world = getWorld(luaState);
+	PhysicsManager::Instance instance = world->physics->lookup({ (uint32_t)lua_tointeger(luaState, 1) });
 	float restitution = (float)lua_tonumber(luaState, 2);
 
-	world->physics.setRestitution(instance, restitution);
+	world->physics->setRestitution(instance, restitution);
 	return 0;
     }
     
     static int setForce(lua_State* luaState)
     {
-	World* world = getContext(luaState)->world;
-	PhysicsManager::Instance instance = world->physics.lookup({ (uint32_t)lua_tointeger(luaState, 1) });
+	World* world = getWorld(luaState);
+	PhysicsManager::Instance instance = world->physics->lookup({ (uint32_t)lua_tointeger(luaState, 1) });
 
 	glm::vec2* v = (glm::vec2*)lua_touserdata(luaState, 2);
 	
-	world->physics.setForce(instance, *v);
+	world->physics->setForce(instance, *v);
 	return 0;
     }
 
     static int setVelocity(lua_State* luaState)
     {
-	World* world = getContext(luaState)->world;
-	PhysicsManager::Instance instance = world->physics.lookup({ (uint32_t)lua_tointeger(luaState, 1) });
+	World* world = getWorld(luaState);
+	PhysicsManager::Instance instance = world->physics->lookup({ (uint32_t)lua_tointeger(luaState, 1) });
 
 	glm::vec2* v = (glm::vec2*)lua_touserdata(luaState, 2);
 	
-	world->physics.setVelocity(instance, *v);
+	world->physics->setVelocity(instance, *v);
 	return 0;
     }
 
     static int getVelocity(lua_State* luaState)
     {
-	World* world = getContext(luaState)->world;
-	PhysicsManager::Instance instance = world->physics.lookup({ (uint32_t)lua_tointeger(luaState, 1) });
+	World* world = getWorld(luaState);
+	PhysicsManager::Instance instance = world->physics->lookup({ (uint32_t)lua_tointeger(luaState, 1) });
 
-        toVec2(luaState, world->physics.getVelocity(instance));
+        toVec2(luaState, world->physics->getVelocity(instance));
 	return 1;
     }
 

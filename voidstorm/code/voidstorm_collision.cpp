@@ -328,10 +328,10 @@ static Manifold circleVsRay(World* world, TransformManager::Instance transformA,
     glm::vec2 offset = shapeA.offset;
     glm::vec2 otherOffset = shapeB.offset;
 
-    glm::vec2 pos = world->transforms.data.position[transformA.index];
-    glm::vec2 otherPos = world->transforms.data.position[transformB.index];
+    glm::vec2 pos = world->transforms->data.position[transformA.index];
+    glm::vec2 otherPos = world->transforms->data.position[transformB.index];
     
-    float scale = world->transforms.data.scale[transformA.index];
+    float scale = world->transforms->data.scale[transformA.index];
     glm::vec2 center = pos + offset;
     float radius = circle->radius;
     float radius2 = radius * radius;
@@ -397,11 +397,11 @@ static Manifold circleVsCircle(World* world, TransformManager::Instance transfor
     CircleShape* circleA = shapeA.data.circle;
     CircleShape* circleB = shapeB.data.circle;
 
-    glm::vec2 pos = world->transforms.data.position[transformA.index];
-    glm::vec2 otherPos = world->transforms.data.position[transformB.index];
+    glm::vec2 pos = world->transforms->data.position[transformA.index];
+    glm::vec2 otherPos = world->transforms->data.position[transformB.index];
     
-    float scale = world->transforms.data.scale[transformA.index];
-    float otherScale = world->transforms.data.scale[transformB.index];
+    float scale = world->transforms->data.scale[transformA.index];
+    float otherScale = world->transforms->data.scale[transformB.index];
     
     glm::vec2 center = pos + offset;
     float scaledRadius = circleA->radius * scale;
@@ -474,10 +474,10 @@ static Manifold polygonVsPolygon(World* world, TransformManager::Instance transf
     PolygonShape* polygonB = shapeB.data.polygon;
 
     // TODO (daniel): Refactor this block
-    glm::vec2 posA = world->transforms.data.position[transformA.index];
-    float rotA = world->transforms.data.rotation[transformA.index];
-    glm::vec2 posB = world->transforms.data.position[transformB.index];
-    float rotB = world->transforms.data.rotation[transformB.index];    
+    glm::vec2 posA = world->transforms->data.position[transformA.index];
+    float rotA = world->transforms->data.rotation[transformA.index];
+    glm::vec2 posB = world->transforms->data.position[transformB.index];
+    float rotB = world->transforms->data.rotation[transformB.index];    
     Transform tA(posA, rotA);
     Transform tB(posB, rotB);
     
@@ -560,10 +560,10 @@ static Manifold circleVsPolygon(World* world, TransformManager::Instance transfo
     PolygonShape* polygon = shapeB.data.polygon;
 
     // TODO (daniel): Refactor this block
-    glm::vec2 posA = world->transforms.data.position[transformA.index];
-    float rotA = world->transforms.data.rotation[transformA.index];    
-    glm::vec2 posB = world->transforms.data.position[transformB.index];
-    float rotB = world->transforms.data.rotation[transformB.index];
+    glm::vec2 posA = world->transforms->data.position[transformA.index];
+    float rotA = world->transforms->data.rotation[transformA.index];    
+    glm::vec2 posB = world->transforms->data.position[transformB.index];
+    float rotB = world->transforms->data.rotation[transformB.index];
     Transform tB(posB, rotB);
 
     // Computer the circle position in the frame of the polygon
@@ -666,11 +666,13 @@ static Manifold stub(World* world, TransformManager::Instance transformA, Collis
     return result;
 }
 
-CollisionManager::CollisionManager()
-	: tree(g_permStackAllocator->alloc(sizeof(DbvtNode) * DBVT_POOL_MAX_NODES)),
-	  circlePool(g_permStackAllocator->alloc(sizeof(CircleShape) * SHAPE_POOL_MAX_CIRCLES), sizeof(CircleShape), SHAPE_POOL_MAX_CIRCLES),
-	  polygonPool(g_permStackAllocator->alloc(sizeof(PolygonShape) * SHAPE_POOL_MAX_POLYGONS), sizeof(PolygonShape), SHAPE_POOL_MAX_POLYGONS),
-	  rayPool(g_permStackAllocator->alloc(sizeof(RayShape) * SHAPE_POOL_MAX_RAYS), sizeof(RayShape), SHAPE_POOL_MAX_RAYS)
+CollisionManager::CollisionManager(dcutil::StackAllocator *_allocator)
+	:
+	allocator(_allocator),
+	tree(_allocator->alloc(sizeof(DbvtNode) * DBVT_POOL_MAX_NODES)),
+	circlePool(_allocator->alloc(sizeof(CircleShape) * SHAPE_POOL_MAX_CIRCLES), sizeof(CircleShape), SHAPE_POOL_MAX_CIRCLES),
+	polygonPool(_allocator->alloc(sizeof(PolygonShape) * SHAPE_POOL_MAX_POLYGONS), sizeof(PolygonShape), SHAPE_POOL_MAX_POLYGONS),
+	rayPool(_allocator->alloc(sizeof(RayShape) * SHAPE_POOL_MAX_RAYS), sizeof(RayShape), SHAPE_POOL_MAX_RAYS)
 {
     g_contactCallbacks[ShapeType::CIRCLE][ShapeType::CIRCLE] = circleVsCircle;
     g_contactCallbacks[ShapeType::POLYGON][ShapeType::POLYGON] = polygonVsPolygon;
@@ -707,7 +709,7 @@ void CollisionManager::allocate(uint32_t count)
 			   + sizeof(DbvtNode*)
 			   + sizeof(Contact));
 
-    data.data = g_permStackAllocator->alloc(size);
+    data.data = allocator->alloc(size);
     data.count = count;
     data.used = 1;
 
@@ -722,7 +724,8 @@ void CollisionManager::allocate(uint32_t count)
 CollisionManager::Instance CollisionManager::create(Entity e, uint32_t type, uint32_t mask)
 {
     uint32_t compIndex = data.used++;
-    map.add(g_permStackAllocator, e, compIndex);
+    map.add(allocator, e, compIndex);
+    
     data.entities[compIndex] = e;
     data.type[compIndex] = type;
     data.mask[compIndex] = mask;
@@ -769,7 +772,7 @@ void CollisionManager::destroy(Instance i)
     
     map.remove(e);
     map.remove(last_e);
-    map.add(g_permStackAllocator, last_e, i.index);
+    map.add(allocator, last_e, i.index);
 
     data.used--;
 
@@ -806,7 +809,7 @@ void CollisionManager::broadTest(Instance i)
 
 	    if(contact->entity != Entity_Null && !contact->next)
 	    {
-		Contact* newContact = (Contact*)g_permStackAllocator->alloc(sizeof(Contact));
+		Contact* newContact = (Contact*)allocator->alloc(sizeof(Contact));
 		newContact->entity = Entity_Null;
 		newContact->next = nullptr;
 

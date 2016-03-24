@@ -61,14 +61,15 @@ uint32_t ContactManager::lookup(uint32_t key)
 
 const float PhysicsSimulator::PhysicsHz = 1.0f / 60.0f;
 
-PhysicsSimulator::PhysicsSimulator()
-	    :
-	    numManifolds(0),
-	    accumulator(0)
-	{
-	    previousState.position = (glm::vec2*)g_permStackAllocator->alloc(VOIDSTORM_TRANSFORM_COMPONENT_COUNT * sizeof(glm::vec2));
-	    interpolatedState.position = (glm::vec2*)g_permStackAllocator->alloc(VOIDSTORM_TRANSFORM_COMPONENT_COUNT * sizeof(glm::vec2));
-	}
+PhysicsSimulator::PhysicsSimulator(dcutil::StackAllocator *_allocator)
+	:
+	allocator(_allocator),
+	numManifolds(0),
+	accumulator(0)
+{
+    previousState.position = (glm::vec2 *)allocator->alloc(VOIDSTORM_TRANSFORM_COMPONENT_COUNT * sizeof(glm::vec2));
+    interpolatedState.position = (glm::vec2 *)allocator->alloc(VOIDSTORM_TRANSFORM_COMPONENT_COUNT * sizeof(glm::vec2));
+}
 
 void PhysicsSimulator::update(World* world, float dt, LineRenderer* linerenderer)
 {
@@ -77,7 +78,7 @@ void PhysicsSimulator::update(World* world, float dt, LineRenderer* linerenderer
     while(accumulator >= PhysicsHz)
     {
 	// Store the previous state
-	memcpy(previousState.position, world->transforms.data.position, world->transforms.data.used * sizeof(glm::vec2));	
+	memcpy(previousState.position, world->transforms->data.position, world->transforms->data.used * sizeof(glm::vec2));	
 
 	integrateVelocity(world, PhysicsHz);
 	narrowCollision(world, PhysicsHz, linerenderer);
@@ -93,9 +94,9 @@ void PhysicsSimulator::update(World* world, float dt, LineRenderer* linerenderer
     */
     float alpha = accumulator / PhysicsHz;
 
-    for(uint32_t i = 1; i < world->transforms.data.used; ++i)
+    for(uint32_t i = 1; i < world->transforms->data.used; ++i)
     {
-	glm::vec2 pos = world->transforms.data.position[i];
+	glm::vec2 pos = world->transforms->data.position[i];
 	glm::vec2 prevPos = previousState.position[i];
 
         interpolatedState.position[i] = pos * alpha + prevPos * (1.0f - alpha);
@@ -106,14 +107,14 @@ void PhysicsSimulator::integrateVelocity(World* world, float dt)
 {
     TIME_BLOCK(Physics_IntegrateVelocity);
 
-    for(uint32_t i = 1; i < world->physics.data.used; ++i)
+    for(uint32_t i = 1; i < world->physics->data.used; ++i)
     {
 	// NOTE (daniel): Hard coded friction constant
-	glm::vec2 friction = world->physics.data.velocity[i] * 1.2f;
-	glm::vec2 totalForce = world->physics.data.force[i] - friction;
+	glm::vec2 friction = world->physics->data.velocity[i] * 1.2f;
+	glm::vec2 totalForce = world->physics->data.force[i] - friction;
 			
-	world->physics.data.acceleration[i] = (totalForce / world->physics.data.mass[i]);
-	world->physics.data.velocity[i] += world->physics.data.acceleration[i] * dt;
+	world->physics->data.acceleration[i] = (totalForce / world->physics->data.mass[i]);
+	world->physics->data.velocity[i] += world->physics->data.acceleration[i] * dt;
     }
 }
 
@@ -124,28 +125,28 @@ void PhysicsSimulator::narrowCollision(World* world, float dt, LineRenderer* lin
     numManifolds = 0;
     ContactManager cm;
 
-    for(uint32_t i = 1; i < world->collisions.data.used; ++i)
+    for(uint32_t i = 1; i < world->collisions->data.used; ++i)
     {
-	Entity e = world->collisions.data.entities[i];
-	uint32_t type = world->collisions.data.type[i];
-	uint32_t mask = world->collisions.data.mask[i];
-	CollisionManager::ShapeData shapeData = world->collisions.data.shape[i];
+	Entity e = world->collisions->data.entities[i];
+	uint32_t type = world->collisions->data.type[i];
+	uint32_t mask = world->collisions->data.mask[i];
+	CollisionManager::ShapeData shapeData = world->collisions->data.shape[i];
 
-	TransformManager::Instance transform = world->transforms.lookup(e);
-	glm::vec2 pos = world->transforms.data.position[transform.index];
+	TransformManager::Instance transform = world->transforms->lookup(e);
+	glm::vec2 pos = world->transforms->data.position[transform.index];
 	glm::vec2 newPosition = pos;
 
-	Contact* c = &world->collisions.data.contact[i];
+	Contact* c = &world->collisions->data.contact[i];
 	while(c)
 	{
 	    Entity other_e = c->entity;
-	    CollisionManager::Instance otherCollision = world->collisions.lookup(other_e);
-	    uint32_t otherType = world->collisions.data.type[otherCollision.index];
+	    CollisionManager::Instance otherCollision = world->collisions->lookup(other_e);
+	    uint32_t otherType = world->collisions->data.type[otherCollision.index];
 	    
 	    if(mask & otherType)
 	    {
-		CollisionManager::ShapeData otherShapeData = world->collisions.data.shape[otherCollision.index];		    
-		TransformManager::Instance otherTransform = world->transforms.lookup(other_e);
+		CollisionManager::ShapeData otherShapeData = world->collisions->data.shape[otherCollision.index];		    
+		TransformManager::Instance otherTransform = world->transforms->lookup(other_e);
 
 		uint32_t a = glm::min(transform.index, otherTransform.index);
 		uint32_t b = glm::max(transform.index, otherTransform.index);
@@ -156,27 +157,27 @@ void PhysicsSimulator::narrowCollision(World* world, float dt, LineRenderer* lin
 		uint32_t reference = cm.lookup(key);
 		if(reference == 0)
 		{		    
-		    cm.add(g_permStackAllocator, key, a);
+		    cm.add(allocator, key, a);
 		    
 		    // Execute collision routine
 		    Manifold manifold = c->callback(world, transform, shapeData, otherTransform, otherShapeData, linerenderer);
 		    if(manifold.numContacts > 0)
 		    {
 			// Callback
-			CollisionResponderManager::Instance responder = world->responders.lookup(e);
+			CollisionResponderManager::Instance responder = world->responders->lookup(e);
 			if(responder.index != 0)
 			{
-			    world->responders.addEntity(responder, other_e, manifold.contacts[0].position, manifold.contacts[0].normal);
+			    world->responders->addEntity(responder, other_e, manifold.contacts[0].position, manifold.contacts[0].normal);
 			}
 
-			CollisionResponderManager::Instance otherResponder = world->responders.lookup(other_e);
+			CollisionResponderManager::Instance otherResponder = world->responders->lookup(other_e);
 			if(otherResponder.index != 0)
 			{
-			    world->responders.addEntity(otherResponder, e, manifold.contacts[0].position, manifold.contacts[0].normal);   
+			    world->responders->addEntity(otherResponder, e, manifold.contacts[0].position, manifold.contacts[0].normal);   
 			}
 
-			PhysicsManager::Instance physics = world->physics.lookup(e);
-			PhysicsManager::Instance otherPhysics = world->physics.lookup(other_e);
+			PhysicsManager::Instance physics = world->physics->lookup(e);
+			PhysicsManager::Instance otherPhysics = world->physics->lookup(other_e);
 			
 			// If both objects have physics component add the manifold for impulse resolution
 			if(physics.index != 0 && otherPhysics.index != 0)
@@ -210,11 +211,11 @@ void PhysicsSimulator::resolveCollisions(World* world)
 	    PhysicsManager::Instance physicsA = manifolds[i].pinstA;
 	    PhysicsManager::Instance physicsB = manifolds[i].pinstB;
 	
-	    glm::vec2 velA = world->physics.data.velocity[physicsA.index];
-	    glm::vec2 velB = world->physics.data.velocity[physicsB.index];
+	    glm::vec2 velA = world->physics->data.velocity[physicsA.index];
+	    glm::vec2 velB = world->physics->data.velocity[physicsB.index];
 
-	    int flagA = world->physics.data.flags[physicsA.index];
-	    int flagB = world->physics.data.flags[physicsB.index];
+	    int flagA = world->physics->data.flags[physicsA.index];
+	    int flagB = world->physics->data.flags[physicsB.index];
 	
 	    glm::vec2 collisionNormal = manifolds[i].contacts[0].normal;
 	
@@ -224,11 +225,11 @@ void PhysicsSimulator::resolveCollisions(World* world)
 	    // Only perform impulse resolution if the objects are moving into eachother
 	    if(contactVel > 0)
 	    {
-		float invMassA = 1.0f / world->physics.data.mass[physicsA.index];
-		float invMassB = 1.0f / world->physics.data.mass[physicsB.index];
+		float invMassA = 1.0f / world->physics->data.mass[physicsA.index];
+		float invMassB = 1.0f / world->physics->data.mass[physicsB.index];
 
-		float restitutionA = world->physics.data.restitution[physicsA.index];
-		float restitutionB = world->physics.data.restitution[physicsB.index];
+		float restitutionA = world->physics->data.restitution[physicsA.index];
+		float restitutionB = world->physics->data.restitution[physicsB.index];
 	    
 		// Restitution
 		// TODO (daniel): Use the minimum instead
@@ -246,10 +247,10 @@ void PhysicsSimulator::resolveCollisions(World* world)
 		
 		// TODO (daniel): Cleanup the flags
 		if(flagA == 0)
-		    world->physics.data.velocity[physicsA.index] -= invMassA * impulse;
+		    world->physics->data.velocity[physicsA.index] -= invMassA * impulse;
 
 		if(flagB == 0)
-		    world->physics.data.velocity[physicsB.index] += invMassB * impulse;	    
+		    world->physics->data.velocity[physicsB.index] += invMassB * impulse;	    
 	    }
 
 	    // TODO (daniel): Penetration Resolution
@@ -262,14 +263,14 @@ void PhysicsSimulator::updateVelocity(World* world, float dt)
 {
     TIME_BLOCK(Physics_UpdateVelocity);
     
-    for(uint32_t i = 1; i < world->physics.data.used; ++i)
+    for(uint32_t i = 1; i < world->physics->data.used; ++i)
     {
-	Entity e = world->physics.data.entities[i];
-	glm::vec2 vel = world->physics.data.velocity[i];
+	Entity e = world->physics->data.entities[i];
+	glm::vec2 vel = world->physics->data.velocity[i];
 	glm::vec2 deltaVel = vel * dt;
 
-	TransformManager::Instance transform = world->transforms.lookup(e);
-	glm::vec2 pos = world->transforms.data.position[transform.index];
+	TransformManager::Instance transform = world->transforms->lookup(e);
+	glm::vec2 pos = world->transforms->data.position[transform.index];
 
 	glm::vec2 newPosition = pos + deltaVel;
 	
@@ -277,13 +278,13 @@ void PhysicsSimulator::updateVelocity(World* world, float dt)
 	float dispLength = glm::length(displacement);
 	if(dispLength > 0)
 	{
-	    CollisionManager::Instance collision = world->collisions.lookup(e);
-	    DbvtNode* node = world->collisions.data.node[collision.index];
+	    CollisionManager::Instance collision = world->collisions->lookup(e);
+	    DbvtNode* node = world->collisions->data.node[collision.index];
 	    
-	    world->collisions.broadTest(collision);	    
-	    world->collisions.tree.moveProxy(node, displacement);
+	    world->collisions->broadTest(collision);	    
+	    world->collisions->tree.moveProxy(node, displacement);
 
-	    world->transforms.data.position[transform.index] = newPosition;
+	    world->transforms->data.position[transform.index] = newPosition;
 	}
     }
 }

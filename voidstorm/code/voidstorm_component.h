@@ -22,6 +22,9 @@ struct ComponentMap
 
 struct TransformManager
 {
+    TransformManager(dcutil::StackAllocator *_allocator)
+	    : allocator(_allocator) {}
+    
     struct Instance { uint32_t index; };
 	
     struct Data
@@ -51,10 +54,14 @@ struct TransformManager
     float getScale(Instance i) { return data.scale[i.index]; }
     
     ComponentMap map;
+    dcutil::StackAllocator *allocator;
 };
 
 struct PhysicsManager
 {
+    PhysicsManager(dcutil::StackAllocator *_allocator)
+	    : allocator(_allocator) {}
+    
     struct Instance { uint32_t index; };
 
     struct Data
@@ -85,10 +92,14 @@ struct PhysicsManager
     glm::vec2 getVelocity(Instance i) { return data.velocity[i.index]; }
 
     ComponentMap map;
+    dcutil::StackAllocator *allocator;
 };
 
 struct CollisionResponderManager
 {
+    CollisionResponderManager(dcutil::StackAllocator *_allocator)
+	    : allocator(_allocator) {}
+    
     struct Instance { uint32_t index; };
 
     struct CollisionResult
@@ -118,13 +129,17 @@ struct CollisionResponderManager
 
     void addEntity(Instance i, Entity e, const glm::vec2& position, const glm::vec2& normal);
     
-    ComponentMap map;	
+    ComponentMap map;
+    dcutil::StackAllocator *allocator;
 };
 
 struct SpriteManager
 {
+    SpriteManager(dcutil::StackAllocator *_allocator)
+	    : allocator(_allocator) {}
+    
     struct Instance { uint32_t index; };
-
+    
     struct Data
     {
 	uint32_t count;
@@ -151,4 +166,5 @@ struct SpriteManager
     void setOrigin(Instance i, glm::vec2 origin) { data.origin[i.index] = origin; }
     
     ComponentMap map;
+    dcutil::StackAllocator *allocator;
 };

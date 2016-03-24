@@ -84,7 +84,7 @@ void TransformManager::allocate(uint32_t count)
 {
     size_t size = count * (sizeof(Entity) + sizeof(glm::vec2) + sizeof(float) + sizeof(float) + sizeof(float));
     
-    data.data = g_permStackAllocator->alloc(size);
+    data.data = allocator->alloc(size);
     data.count = count;
     data.used = 1;
 
@@ -98,7 +98,7 @@ void TransformManager::allocate(uint32_t count)
 TransformManager::Instance TransformManager::create(Entity e)
 {
     uint32_t compIndex = data.used++;	
-    map.add(g_permStackAllocator, e, compIndex);
+    map.add(allocator, e, compIndex);
     
     data.entities[compIndex] = e;
     data.position[compIndex] = glm::vec2(0, 0);
@@ -130,7 +130,7 @@ void TransformManager::destroy(Instance i)
 
     map.remove(e);
     map.remove(last_e);
-    map.add(g_permStackAllocator, last_e, i.index);
+    map.add(allocator, last_e, i.index);
 
     data.used--;
 
@@ -144,7 +144,7 @@ void PhysicsManager::allocate(uint32_t count)
     size_t size = count * (sizeof(Entity) +  sizeof(float) + sizeof(float) + sizeof(glm::vec2)
 			   + sizeof(glm::vec2) + sizeof(glm::vec2) + sizeof(uint32_t));
     
-    data.data  = g_permStackAllocator->alloc(size);
+    data.data  = allocator->alloc(size);
     data.count = count;
     data.used = 1;
 
@@ -161,7 +161,8 @@ void PhysicsManager::allocate(uint32_t count)
 PhysicsManager::Instance PhysicsManager::create(Entity e)
 {
     uint32_t compIndex = data.used++;	
-    map.add(g_permStackAllocator, e, compIndex);
+    map.add(allocator, e, compIndex);
+    
     data.entities[compIndex] = e;
     data.mass[compIndex] = 1.0f;
     data.restitution[compIndex] = 1.0f;
@@ -197,7 +198,7 @@ void PhysicsManager::destroy(Instance i)
 
     map.remove(e);
     map.remove(last_e);
-    map.add(g_permStackAllocator, last_e, i.index);
+    map.add(allocator, last_e, i.index);
 	
     data.used--;
 
@@ -210,7 +211,7 @@ void CollisionResponderManager::allocate(uint32_t count)
 {
     size_t size = count * (sizeof(Entity) + sizeof(CollisionResult));
 
-    data.data = g_permStackAllocator->alloc(size);
+    data.data = allocator->alloc(size);
     data.count = count;
     data.used = 1;
 
@@ -221,7 +222,7 @@ void CollisionResponderManager::allocate(uint32_t count)
 CollisionResponderManager::Instance CollisionResponderManager::create(Entity e)
 {
     uint32_t compIndex = data.used++;
-    map.add(g_permStackAllocator, e, compIndex);
+    map.add(allocator, e, compIndex);
     data.entities[compIndex] = e;
 
     CollisionResult r;
@@ -251,7 +252,7 @@ void CollisionResponderManager::destroy(Instance i)
 
     map.remove(e);
     map.remove(last_e);
-    map.add(g_permStackAllocator, last_e, i.index);
+    map.add(allocator, last_e, i.index);
 
     data.used--;
     
@@ -277,7 +278,7 @@ void SpriteManager::allocate(uint32_t count)
 {
     size_t size = count * (sizeof(Entity) + sizeof(glm::vec4) + sizeof(Texture*) + sizeof(glm::vec2) + sizeof(glm::vec2));
     
-    data.data  = g_permStackAllocator->alloc(size);
+    data.data  = allocator->alloc(size);
     data.count = count;
     data.used = 1;
 
@@ -291,7 +292,7 @@ void SpriteManager::allocate(uint32_t count)
 SpriteManager::Instance SpriteManager::create(Entity e)
 {
     uint32_t compIndex = data.used++;	
-    map.add(g_permStackAllocator, e, compIndex);
+    map.add(allocator, e, compIndex);
 	
     data.entities[compIndex] = e;
     data.color[compIndex] = glm::vec4(1, 1, 1, 1);
@@ -322,7 +323,7 @@ void SpriteManager::destroy(SpriteManager::Instance i)
     
     map.remove(e);
     map.remove(last_e);
-    map.add(g_permStackAllocator, last_e, i.index);
+    map.add(allocator, last_e, i.index);
 
     data.used--;
 

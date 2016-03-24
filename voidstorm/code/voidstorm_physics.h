@@ -17,7 +17,7 @@ struct ContactManager
     ContactNode map[100];
 };
 
-// NOTE (daniel): Add rotation and other state when we use it
+// NOTE (daniel): Add rotation and other states when we implement them
 struct PhysicsState
 {
     glm::vec2* position;
@@ -26,7 +26,7 @@ struct PhysicsState
 class PhysicsSimulator
 {
 public:
-    PhysicsSimulator();
+    PhysicsSimulator(dcutil::StackAllocator *allocator);
 
     void update(World* world, float dt, LineRenderer* linerenderer);
 
@@ -45,5 +45,6 @@ private:
 
     float accumulator;
     PhysicsState previousState;
-    PhysicsState interpolatedState;    
+    PhysicsState interpolatedState;
+    dcutil::StackAllocator *allocator;
 };

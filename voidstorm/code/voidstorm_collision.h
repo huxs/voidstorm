@@ -84,7 +84,7 @@ private:
 class CollisionManager
 {
 public:
-    CollisionManager();
+    CollisionManager(dcutil::StackAllocator *_allocator);
 
     void reset();
     
@@ -152,6 +152,7 @@ private:
     dcutil::PoolAllocator rayPool;
 
     ComponentMap map;
+    dcutil::StackAllocator *allocator;
 };
 
 struct ContactPoint
@@ -177,7 +178,8 @@ struct Manifold
 };
 
 // TODO (daniel): Once we converted instances to transforms we can change this
-// function signature
+// function signature.
+// Also change to use the macro version..
 struct World;
 typedef Manifold CONTACT_CALLBACK(World* world,
 				  TransformManager::Instance transformA,
