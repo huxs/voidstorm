@@ -6,6 +6,8 @@
   PROJECT:
   - opengl_glx for linux compabillity
   - test the project on linux
+  - nosdl:
+  - timers, file loading, fullscreen, resolution changes.
   
   ENGINE:
   - Enable VSync

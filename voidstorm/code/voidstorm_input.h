@@ -1,5 +1,13 @@
 #pragma once
 
+#define VOIDSTORM_NUM_KEYS 512
+
+// TODO (daniel): Fill in this mapping
+enum VoidstormKeys
+{
+    VOIDSTORM_KEY_F11 = 122,
+};
+
 struct ControllerButtonState
 {
     bool32 isPressed;
@@ -30,10 +38,10 @@ struct KeyboardState
 {
     KeyboardState()
 	{
-	    memset(keys, 0, sizeof(uint8_t) * SDL_NUM_SCANCODES);
+	    memset(keys, 0, sizeof(bool32) * VOIDSTORM_NUM_KEYS);
 	}
     
-    uint8_t keys[SDL_NUM_SCANCODES];
+    bool32 keys[VOIDSTORM_NUM_KEYS];
 };
 
 struct GameInput
@@ -44,12 +52,14 @@ struct GameInput
     KeyboardState* previousKeyboard;
     ControllerState controllers[2];
     ControllerState* currentController;
-    ControllerState* previousController;   
+    ControllerState* previousController;
+    // TODO (daniel): Add Mouse State
 };
 
-inline bool isKeyDown(SDL_Scancode key)
+inline bool
+isKeyDown(GameInput* gameInput, uint32_t key)
 {
-    if(SDL_GetKeyboardState(NULL)[key])
+    if(gameInput->currentKeyboard->keys[key])
     {
 	return true;
     }
@@ -57,15 +67,34 @@ inline bool isKeyDown(SDL_Scancode key)
     return false;
 }
 
-inline bool isKeyDownAndReleased(GameInput* gameInput, SDL_Scancode key)
+inline bool
+isKeyReleasedToDown(GameInput* gameInput, uint32_t key)
 {
-    uint8_t isDown = gameInput->currentKeyboard->keys[key];
-    
+    bool32 isDown = gameInput->currentKeyboard->keys[key];
+
     if(isDown)
+    {
 	if (!gameInput->previousKeyboard->keys[key])
 	{
 	    return true;
 	}
+    }
+
+    return false;
+}
+
+inline bool
+isKeyDownToReleased(GameInput* gameInput, uint32_t key)
+{
+    bool32 isDown = gameInput->currentKeyboard->keys[key];
+
+    if(!isDown)
+    {
+	if (gameInput->previousKeyboard->keys[key])
+	{
+	    return true;
+	}
+    }
 
     return false;
 }

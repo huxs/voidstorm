@@ -166,13 +166,13 @@ updateGame(GameMemory* memory, GameInput *input)
     // We could store this once in initialize instead..
     context->input = input;
     
-    if(isKeyDownAndReleased(input, SDL_SCANCODE_F11))
+    if(isKeyDownToReleased(input, VOIDSTORM_KEY_F11))
     {
-	renderer->toogleFullscreen();
+	//renderer->toogleFullscreen();
     }
 	
 #ifdef VOIDSTORM_INTERNAL	
-    if(isKeyDownAndReleased(input, SDL_SCANCODE_R))
+    if(isKeyDownToReleased(input, 'R'))
     {
 	memory->gameStackAllocator->reset();
 

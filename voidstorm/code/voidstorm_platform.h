@@ -1,7 +1,7 @@
 #pragma once
 
 #include <SDL2/SDL.h>
-#include "voidstorm_alloc.h"
+
 #include <dcfx/context.h>
 #include <dcutil/macros.h>
 
@@ -11,6 +11,9 @@ typedef int32_t bool32;
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
+
+#include "voidstorm_alloc.h"
+#include "voidstorm_input.h"
 
 struct WorkQueue;
 struct WorkThreadContext
@@ -28,8 +31,6 @@ typedef WORK_QUEUE_CALLBACK(WorkQueueCallback);
 #define strcat strcat_s
 #define sprintf sprintf_s
 #endif
-
-#include "voidstorm_input.h" // GameInput
 
 #ifdef VOIDSTORM_INTERNAL
 #define TIME_BLOCK(id) TimedBlock id(__COUNTER__, #id);
@@ -99,3 +100,4 @@ void setupWorkQueue(WorkQueue* queue, uint32_t threadCount, WorkThreadContext *c
 void addEntry(WorkQueue *queue, WorkQueueCallback *callback, void *data);
 bool doNextEntry(WorkQueue *queue, WorkThreadContext *context);
 
+// Timing operations needs to be in the platform API

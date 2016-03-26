@@ -41,15 +41,6 @@ struct WorkQueue
     WorkQueueEntry entries[256];
 };
 
-struct Controller
-{
-    Controller()
-	    : pad(NULL) {};
-	
-    SDL_GameController* pad;
-    int index;
-};
-
 enum State
 {
     RUNNING,
