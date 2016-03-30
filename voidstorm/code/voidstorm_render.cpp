@@ -1,4 +1,3 @@
-#include <SDL2/SDL_syswm.h>
 
 const float Renderer::GaussBlurSigma = 3.0f;
 const float Renderer::GaussBlurTapSize = 1.0f;
@@ -18,7 +17,7 @@ Renderer::Renderer(dcfx::Context *renderContext, GameMemory *memory)
     resolution.x = 1280;
     resolution.y = 720;
     aspectRatio = (float)resolution.y / resolution.x;
-
+	    
     spritebatch = new(memory->permStackAllocator->alloc(sizeof(SpriteBatch)))  SpriteBatch(renderCtx);
     linerenderer = new(memory->permStackAllocator->alloc(sizeof(LineRenderer)))  LineRenderer(renderCtx);
     particle = new(memory->permStackAllocator->alloc(sizeof(ParticleEngine))) ParticleEngine(
@@ -43,7 +42,7 @@ Renderer::Renderer(dcfx::Context *renderContext, GameMemory *memory)
     indices[2] = 2;
     indices[3] = 2;
     indices[4] = 1; 
-    indices[5] = 3;
+    indices[5] = 3; 
 
     dcfx::VertexDecl decl;
     decl.begin();
@@ -121,7 +120,7 @@ glm::ivec2 Renderer::getResolution()
 void Renderer::toogleFullscreen()
 {
     isFullscreen = (isFullscreen ? false : true);
-    //SDL_SetWindowFullscreen(window, isFullscreen);
+    // change res
 }
 
 void Renderer::setCameraPosition(const glm::vec2& position)

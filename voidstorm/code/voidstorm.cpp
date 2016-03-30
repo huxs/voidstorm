@@ -41,11 +41,11 @@ resetWorldManagers(World *world)
 
 WORK_QUEUE_CALLBACK(TestWorker)
 {
-    PRINT("Thread %d\n", *((int*)data));
+    PRINT("Thread %d\n", *((int *)data));
 }
 
 bool
-initializeGame(GameMemory *memory, dcfx::Context *renderContext)
+initializeGame(GameMemory *memory, void *hwnd)
 {
     VoidstormContext *context = (VoidstormContext *)memory->permanentStoragePtr;
 
@@ -58,9 +58,11 @@ initializeGame(GameMemory *memory, dcfx::Context *renderContext)
     int test = 5;
     addEntry(context.queue, TestWorker, &test);
 #endif    
- 
+
+    context->renderContext = new(memory->permStackAllocator->alloc(sizeof(dcfx::Context))) dcfx::Context(hwnd, memory->renderHeapAllocator);	        
+    
     context->simulator = new(memory->permStackAllocator->alloc(sizeof(PhysicsSimulator))) PhysicsSimulator(memory->permStackAllocator);
-    context->renderer = new(memory->permStackAllocator->alloc(sizeof(Renderer))) Renderer(renderContext, memory);
+    context->renderer = new(memory->permStackAllocator->alloc(sizeof(Renderer))) Renderer(context->renderContext, memory);
     
     context->world.entities = new(memory->permStackAllocator->alloc(sizeof(EntityManager))) EntityManager();
 
@@ -79,9 +81,9 @@ initializeGame(GameMemory *memory, dcfx::Context *renderContext)
     context->world.sprites = new(memory->permStackAllocator->alloc(sizeof(CollisionManager))) SpriteManager(memory->permStackAllocator);
     context->world.sprites->allocate(VOIDSTORM_SPRITE_COMPONENT_COUNT);
 
-    context->resources = new(memory->permStackAllocator->alloc(sizeof(ResourceManager))) ResourceManager(memory->permStackAllocator, renderContext);
+    context->resources = new(memory->permStackAllocator->alloc(sizeof(ResourceManager))) ResourceManager(memory->permStackAllocator, context->renderContext);
     
-    context->allocatorUserData.ms = memory->ms;
+    context->allocatorUserData.heap = memory->globalHeapAllocator;
     context->allocatorUserData.pool = new(memory->permStackAllocator->alloc(sizeof(dcutil::PoolAllocator))) dcutil::PoolAllocator(
 	memory->permStackAllocator->alloc(VOIDSTORM_SCRIPT_ELEMENT_SIZE * VOIDSTORM_SCRIPT_ELEMENT_COUNT),
 	VOIDSTORM_SCRIPT_ELEMENT_SIZE,
@@ -197,7 +199,7 @@ updateGame(GameMemory* memory, GameInput *input)
 	FileTime currentFileTime;
 	if(getLastWriteTime(file.path, &currentFileTime))
 	{		
-	    if(compareFileTime(file.timeWhenLoaded, currentFileTime) != 0)
+	    if(compareFileTime(&file.timeWhenLoaded, &currentFileTime) != 0)
 	    {
 		lua_getfield(luaState, LUA_GLOBALSINDEX, "dofile");
 		lua_pushstring(luaState, file.name);
@@ -313,5 +315,7 @@ shutdownGame(GameMemory *memory)
     context->simulator->~PhysicsSimulator();
     context->resources->~ResourceManager();
 
+    context->renderContext->~Context();
+    
     return 0;
 }

@@ -61,6 +61,7 @@ if(MSVC)
   add_definitions(/wd4297)                     # Disable SDL throw warning
 
   set(CMAKE_EXE_LINKER_FLAGS "/ignore:4098" )  # Disable the warning for mixing runtime libraries
+  set(CMAKE_EXE_LINKER_FLAGS "/subsystem:windows" )  
 endif()
 
 # GCC
@@ -85,7 +86,6 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 # Find modules.
 find_package(DCFX REQUIRED)
-find_package(SDL2 REQUIRED)
 find_package(LUA REQUIRED)
 find_package(DLMalloc REQUIRED)
 
@@ -94,8 +94,6 @@ if(HAVE_64_BIT)
   set(EXTERNAL_LIBRARIES
     optimized ${DCFX_LIBRARY_x64} debug ${DCFX_LIBRARY_x64}
     optimized ${DCUTIL_LIBRARY_x64} debug ${DCUTIL_LIBRARY_x64}
-    optimized ${SDL2_MAIN_LIBRARY_x64} debug ${SDL2_MAIN_LIBRARY_x64}
-    optimized ${SDL2_LIBRARY_x64} debug ${SDL2_LIBRARY_x64}
     optimized ${LUA_LIBRARY_x64} debug ${LUA_LIBRARY_x64}
     optimized ${DLMALLOC_LIBRARY_x64} debug ${DLMALLOC_LIBRARY_x64}
     )
@@ -103,8 +101,6 @@ else()
   set(EXTERNAL_LIBRARIES
     optimized ${DCFX_LIBRARY_x86} debug ${DCFX_LIBRARY_x86}
     optimized ${DCUTIL_LIBRARY_x86} debug ${DCUTIL_LIBRARY_x86}
-    optimized ${SDL2_MAIN_LIBRARY_x86} debug ${SDL2_MAIN_LIBRARY_x86}
-    optimized ${SDL2_LIBRARY_x86} debug ${SDL2_LIBRARY_x86}
     optimized ${LUA_LIBRARY_x86} debug ${LUA_LIBRARY_x86}
     optimized ${DLMALLOC_LIBRARY_x86} debug ${DLMALLOC_LIBRARY_x86}
     )

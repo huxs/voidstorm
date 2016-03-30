@@ -5,9 +5,7 @@
 
   PROJECT:
   - opengl_glx for linux compabillity
-  - test the project on linux
-  - nosdl:
-  - timers, file loading, fullscreen, resolution changes.
+  - linux platform layer
   
   ENGINE:
   - Enable VSync
@@ -42,6 +40,7 @@
 */
 
 #include <Lua/lua.hpp>
+#include <dcfx/context.h>
 
 #include "voidstorm_config.h"
 #include "voidstorm_platform.h"
@@ -89,6 +88,7 @@ struct World
 struct VoidstormContext
 {
     WorkQueue *queue;
+    dcfx::Context *renderContext;
     PhysicsSimulator *simulator;
     Renderer *renderer;
     World world;

@@ -1,9 +1,12 @@
 #pragma once
 
 #include <windows.h>
-#include <SDL2/SDL.h>
 
-#define APPLICATION_STORAGE_RESERVED_SIZE Megabytes(1)
+#define strcpy strcpy_s
+#define strcat strcat_s
+#define sprintf sprintf_s
+
+#define GAME_STORAGE_RESERVED_SIZE Megabytes(1)
 #define PERMANENT_STORAGE_SIZE Megabytes(256)
 #define TRANSIENT_STORAGE_SIZE Megabytes(128)
 
@@ -23,12 +26,6 @@ struct RecordingState
     HANDLE memoryMap;
 };
 
-struct WorkQueueEntry
-{
-    WorkQueueCallback* callback;
-    void* data;
-};
-
 struct WorkQueue
 {
     uint32_t volatile completionGoal;
@@ -41,8 +38,3 @@ struct WorkQueue
     WorkQueueEntry entries[256];
 };
 
-enum State
-{
-    RUNNING,
-    QUIT
-};

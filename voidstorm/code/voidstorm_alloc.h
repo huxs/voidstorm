@@ -2,7 +2,6 @@
 
 #include <dcutil/allocator.h>
 #include <dlmalloc/dlmalloc.h>
-#include <mutex>
 
 struct HeapAllocator : public dcutil::AllocatorI
 {
@@ -11,27 +10,28 @@ struct HeapAllocator : public dcutil::AllocatorI
     
     void* alloc(size_t size)
 	{
-	    mutex.lock();
-	    void* ptr =  mspace_malloc(ms, size);
-	    mutex.unlock();
+	    void *ptr =  mspace_malloc(ms, size);
 	    return ptr;
 	}
 
-    void free(void* ptr)
+    void* realloc(void *ptr, size_t size)
 	{
-	    mutex.lock();
+	    void *ret = mspace_realloc(ms, ptr, size);
+	    return ret;
+	}
+    
+    void free(void *ptr)
+	{
 	    mspace_free(ms, ptr);
-	    mutex.unlock();
 	}
 
-    std::mutex mutex;
     mspace ms;
 };
 
 struct LuaAllocatorUserData
 {
-    dcutil::PoolAllocator* pool;
-    mspace ms;
+    dcutil::PoolAllocator *pool;
+    HeapAllocator *heap;
 };
 
 struct TinyStlAllocator

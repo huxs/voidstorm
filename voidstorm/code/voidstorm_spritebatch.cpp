@@ -2,76 +2,64 @@
 #include <dcutil/memoryreader.h>
 
 // TODO (daniel): Move fonts to resource manager
-static SpriteFont loadFont(dcfx::Context* renderCtx, const char* filepath)
+static SpriteFont loadFont(dcfx::Context *renderCtx, const char *filename)
 {
     SpriteFont font;
 
-    tinystl::string assets(VOIDSTORM_FONT_DIRECTORY);
-    tinystl::string file(filepath);
-    assets.append(file.c_str(), file.c_str() + file.size());
-    PRINT("%s\n", assets.c_str());  
-    
-    SDL_RWops* handle = SDL_RWFromFile(assets.c_str(), "rb");
-    if (handle == nullptr)
+    char path[150];
+    strcpy(path, VOIDSTORM_FONT_DIRECTORY);
+    strcat(path, filename);
+    PRINT("%s\n", path);  
+
+    File file = readEntireFile(path);
+    if (file.data != NULL)
     {
-	PRINT("Failed to open file. %s\n", assets.c_str());
-	return font;
-    }
+	dcutil::MemoryReader reader(file.data, file.size);
 
-    // Get the size of the file in bytes
-    SDL_RWseek(handle, 0, SEEK_END);
-    size_t size = (unsigned int)SDL_RWtell(handle);
-    SDL_RWseek(handle, 0, SEEK_SET);
+	// Validate file header
+	static const char valid[] = "DXTKfont";
 
-    // Allocate space for storing the content of the file
-    char* mem = (char*)renderCtx->frameAlloc(sizeof(char) * size);
-
-    size_t bytes = SDL_RWread(handle, mem, size, 1);
-    if (bytes != 1)
-    {
-	PRINT("Error reading from file %s.\n", filepath);
-	return font;
-    }
-	
-    dcutil::MemoryReader reader(mem, size);
-
-    // Validate file header
-    static const char valid[] = "DXTKfont";
-
-    for(int i = 0; i < ARRAYSIZE(valid)-1; ++i)
-    {
-	char c;
-	dcutil::read(&reader, c);
-	if(c != valid[i])
+	for(int i = 0; i < ARRAYSIZE(valid)-1; ++i)
 	{
-	    PRINT("File not valid DXTK font.\n");
-	    return font;
+	    char c;
+	    dcutil::read(&reader, c);
+	    if(c != valid[i])
+	    {
+		PRINT("File not valid DXTK font.\n");
+		return font;
+	    }
 	}
-    }
 
-    uint32_t glyphCount;
-    dcutil::read(&reader, glyphCount);
-    font.glyphs.resize(glyphCount);
-    for(uint32_t i = 0; i < glyphCount; ++i)
+	uint32_t glyphCount;
+	dcutil::read(&reader, glyphCount);
+	font.glyphs.resize(glyphCount);
+	for(uint32_t i = 0; i < glyphCount; ++i)
+	{
+	    dcutil::read(&reader, font.glyphs[i]);
+	}
+	
+	float lineSpacing;
+	dcutil::read(&reader, lineSpacing);
+
+	char defaultChar[4];
+	dcutil::read(&reader, defaultChar);
+
+	dcutil::read(&reader, font.desc);
+
+	size_t numPixels = font.desc.stride * font.desc.rows;
+	
+	uint8_t* pixels = (uint8_t*)renderCtx->frameAlloc(numPixels);
+	reader.read(pixels, numPixels);
+
+	font.texture = renderCtx->createTexture(font.desc.width, font.desc.height, dcfx::TextureFormat::RGBA8);
+	
+	renderCtx->updateTexture(font.texture, pixels);
+    }
+    else
     {
-	dcutil::read(&reader, font.glyphs[i]);
+	PRINT("Failed to open file. %s\n", path);
+	return font;
     }
-	
-    float lineSpacing;
-    dcutil::read(&reader, lineSpacing);
-
-    char defaultChar[4];
-    dcutil::read(&reader, defaultChar);
-
-    dcutil::read(&reader, font.desc);
-
-    size_t numPixels = font.desc.stride * font.desc.rows;
-	
-    uint8_t* pixels = (uint8_t*)renderCtx->frameAlloc(numPixels);
-    reader.read(pixels, numPixels);
-
-    font.texture = renderCtx->createTexture(font.desc.width, font.desc.height, dcfx::TextureFormat::RGBA8);
-    renderCtx->updateTexture(font.texture, pixels);
 
     return font;
 };

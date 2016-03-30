@@ -1,7 +1,9 @@
-void* LuaAllocatorCallback(void* ud, void* ptr, size_t osize, size_t nsize)
+
+void* LuaAllocatorCallback(void *ud, void *ptr, size_t osize, size_t nsize)
 {
-    LuaAllocatorUserData* data = (LuaAllocatorUserData*)ud;
-    dcutil::PoolAllocator* pool = data->pool;
+    LuaAllocatorUserData *data = (LuaAllocatorUserData *)ud;
+    dcutil::PoolAllocator *pool = data->pool;
+    HeapAllocator *heap = data->heap;
     
     void* pRet = NULL;
     if(nsize == 0)
@@ -12,7 +14,8 @@ void* LuaAllocatorCallback(void* ud, void* ptr, size_t osize, size_t nsize)
 	}
 	else
 	{
-	    mspace_free(data->ms, ptr);    
+	    heap->free(ptr);
+	    
 	}
 	
 	return 0;	
@@ -22,7 +25,7 @@ void* LuaAllocatorCallback(void* ud, void* ptr, size_t osize, size_t nsize)
     {
 	if (nsize < VOIDSTORM_SCRIPT_ELEMENT_SIZE)
 	{
-		pRet = pool->alloc(0);
+	    pRet = pool->alloc(0);
 	    if(ptr)
 	    {
 		if(osize > 0 && osize < VOIDSTORM_SCRIPT_ELEMENT_SIZE)
@@ -33,7 +36,7 @@ void* LuaAllocatorCallback(void* ud, void* ptr, size_t osize, size_t nsize)
 		else if(osize > VOIDSTORM_SCRIPT_ELEMENT_SIZE)
 		{
 		    memcpy(pRet, ptr, VOIDSTORM_SCRIPT_ELEMENT_SIZE);
-		    mspace_free(data->ms, ptr);
+		    heap->free(ptr);
 		}
 	    }
 	}
@@ -42,13 +45,13 @@ void* LuaAllocatorCallback(void* ud, void* ptr, size_t osize, size_t nsize)
 	{
 	    if (osize > 0 && osize < VOIDSTORM_SCRIPT_ELEMENT_SIZE)
 	    {
-		pRet = mspace_realloc(data->ms, NULL, nsize);
+		pRet = heap->realloc(NULL, nsize);
 		memcpy(pRet, ptr, VOIDSTORM_SCRIPT_ELEMENT_SIZE);
 		pool->free(ptr);
 	    }
 	    else
 	    {	
-		pRet = mspace_realloc(data->ms, ptr, nsize);
+		pRet = heap->realloc(ptr, nsize);
 	    }
 	}	
 	//PRINT("Allocating %p - Size: %d\n", pRet, (int)nsize);

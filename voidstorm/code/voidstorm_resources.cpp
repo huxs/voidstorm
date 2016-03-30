@@ -1,52 +1,35 @@
-Texture* TextureManager::load(const char* name)
+Texture *
+TextureManager::load(const char *name)
 {
-    Texture* result = textures.lookup(name);
+    Texture *result = textures.lookup(name);
     if(!result)
     {
 	char path[150];
 	strcpy(path, VOIDSTORM_TEXTURE_DIRECTORY);
 	strcat(path, name);
-	
-	SDL_RWops* handle = SDL_RWFromFile(path, "rb");
-	if (handle != nullptr)
-	{	    
-	    // Get the size of the file in bytes.
-	    SDL_RWseek(handle, 0, SEEK_END);
-	    size_t size = (size_t)SDL_RWtell(handle);
-	    SDL_RWseek(handle, 0, SEEK_SET);
+	PRINT("%s\n", path);
 
-	    char* ptr = (char*)renderCtx->frameAlloc(size);
-	    
-	    size_t read = SDL_RWread(handle, ptr, size, 1);
-	    if (read == 1)
+	File file = readEntireFile(path);
+	if (file.data != NULL)
+	{	    
+	    dcfx::ImageInfo info;
+	    info.m_isSRGB = true;
+	    dcfx::TextureHandle handle = renderCtx->createTexture(file.data, file.size, info);
+	    if(handle.index != dcfx::InvalidHandle)
 	    {
-		dcfx::ImageInfo info;
-		info.m_isSRGB = true;
-		dcfx::TextureHandle handle = renderCtx->createTexture(ptr, size, info);
-		if(handle.index != dcfx::InvalidHandle)
-		{
-		    result = textures.add(name);
+		result = textures.add(name);
 		    
-		    if(result != nullptr)
-		    {
-			result->handle = handle;
-			result->width = info.m_width;
-			result->height = info.m_height;
-		    }
-		    else
-		    {
-			PRINT("Error adding texture %s. \n", path);
-			renderCtx->deleteTexture(handle);
-		    }
+		if(result != nullptr)
+		{
+		    result->handle = handle;
+		    result->width = info.m_width;
+		    result->height = info.m_height;
 		}
 		else
 		{
-		    PRINT("Error creating texture %s. \n", path);
-		}	    
-	    }
-	    else
-	    {
-		PRINT("Error reading texture %s.\n", path);
+		    PRINT("Error adding texture %s. \n", path);
+		    renderCtx->deleteTexture(handle);
+		}
 	    }
 	}
 	else

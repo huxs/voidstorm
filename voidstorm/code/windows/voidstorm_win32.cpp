@@ -1,7 +1,10 @@
 #include "../voidstorm_platform.h"
 #include "../voidstorm_config.h"
 
+#include <new>
+#include <intrin.h>
 #include <xinput.h>
+#include <assert.h>
 
 static void
 printGetLastError()
@@ -18,26 +21,6 @@ printGetLastError()
 	LocalFree(messageBuffer);
 }
 
-bool
-getLastWriteTime(char *filename, FileTime *filetime)
-{
-    WIN32_FIND_DATA findData;
-    HANDLE handle = FindFirstFileA(filename, (LPWIN32_FIND_DATAA)&findData);
-    if(handle != INVALID_HANDLE_VALUE)
-    {
-	filetime->time = findData.ftLastWriteTime;
-	FindClose(handle);
-	return true;
-    }
-    
-    return false;
-}
-
-int
-compareFileTime(FileTime& a, FileTime& b)
-{
-    return CompareFileTime(&a.time, &b.time);
-}
 
 static bool
 initializeMemory(GameMemory *memory)
@@ -273,8 +256,13 @@ loadXInput()
 
 }
 
-HeapAllocator* g_heapAllocator;
+enum State
+{
+    RUNNING,
+    QUIT
+};
 
+HeapAllocator *g_heapAllocator;
 bool g_showCursor;
 State g_state;
 
@@ -373,13 +361,12 @@ processPendingMessages(KeyboardState *keyboardState, GameMemory *memory, Recordi
 
 }
 
-int main(int argv, char** argc)
+int CALLBACK
+WinMain(HINSTANCE instance, HINSTANCE prevInstance, LPSTR cmd, int show)
 {
     g_showCursor = true;
     
     loadXInput();
-    
-    HINSTANCE instance = (HINSTANCE)GetModuleHandle(NULL);
     
     WNDCLASSA windowClass = {};
 
@@ -413,46 +400,38 @@ int main(int argv, char** argc)
 	{
 	    ShowWindow(hwnd, 10);
 	    
-	    GameMemory gameMemory = {};
-	    initializeMemory(&gameMemory);
+	    GameMemory memory = {};
+	    initializeMemory(&memory);
 
-	    uint8_t *memoryPtr = (uint8_t *)gameMemory.permanentStoragePtr + APPLICATION_STORAGE_RESERVED_SIZE;
+	    uint8_t *memoryPtr = (uint8_t *)memory.permanentStoragePtr + GAME_STORAGE_RESERVED_SIZE;
 	
-	    mspace globalSpace = create_mspace_with_base(
-		memoryPtr,
-		VOIDSTORM_APPLICATION_HEAP_SIZE,
-		0);    
+	    mspace globalSpace = create_mspace_with_base(memoryPtr, VOIDSTORM_APPLICATION_HEAP_SIZE, 0);    
 	    HeapAllocator globalHeapAllocator(globalSpace);
-	    g_heapAllocator = &globalHeapAllocator;
-	    gameMemory.heapAllocator = &globalHeapAllocator;
+	    memory.globalHeapAllocator = &globalHeapAllocator;
 
-	    gameMemory.ms = globalSpace;
-
-	    mspace renderSpace = create_mspace_with_base(
-		(uint8_t*)memoryPtr + VOIDSTORM_APPLICATION_HEAP_SIZE,
-		VOIDSTORM_RENDER_HEAP_SIZE,
-		0);    
-	    HeapAllocator renderHeapAllocator(renderSpace);	
+	    mspace renderSpace = create_mspace_with_base((uint8_t*)memoryPtr + VOIDSTORM_APPLICATION_HEAP_SIZE, VOIDSTORM_RENDER_HEAP_SIZE, 0);    
+	    HeapAllocator renderHeapAllocator(renderSpace);
+	    memory.renderHeapAllocator = &renderHeapAllocator;
 	
 	    uint8_t *permStackPtr = (uint8_t *)memoryPtr + VOIDSTORM_APPLICATION_HEAP_SIZE + VOIDSTORM_RENDER_HEAP_SIZE;	
 	    dcutil::StackAllocator *permStackAllocator = new(permStackPtr) dcutil::StackAllocator(permStackPtr + sizeof(dcutil::StackAllocator), VOIDSTORM_APPLICATION_PERMANENT_STACK_SIZE);
-	    gameMemory.permStackAllocator = permStackAllocator;
+	    memory.permStackAllocator = permStackAllocator;
 
 	    uint8_t *gameStackPtr = (uint8_t *)permStackPtr + VOIDSTORM_APPLICATION_PERMANENT_STACK_SIZE;
 	    dcutil::StackAllocator *gameStackAllocator = new(gameStackPtr) dcutil::StackAllocator(gameStackPtr + sizeof(dcutil::StackAllocator), VOIDSTORM_APPLICATION_GAME_STACK_SIZE);
-	    gameMemory.gameStackAllocator = gameStackAllocator;
-	    
-	    dcfx::Context *renderContext = new(gameMemory.permStackAllocator->alloc(sizeof(dcfx::Context))) dcfx::Context(hwnd, &renderHeapAllocator);
-    
-	    GameInput gameInput;
-	    gameInput.currentKeyboard = &gameInput.keyboards[0];
-	    gameInput.previousKeyboard = &gameInput.keyboards[1];
-	    gameInput.currentController = &gameInput.controllers[0];
-	    gameInput.previousController = &gameInput.controllers[1];
+	    memory.gameStackAllocator = gameStackAllocator;
+
+	    g_heapAllocator = &globalHeapAllocator;
+
+	    GameInput input;
+	    input.currentKeyboard = &input.keyboards[0];
+	    input.previousKeyboard = &input.keyboards[1];
+	    input.currentController = &input.controllers[0];
+	    input.previousController = &input.controllers[1];
 
 	    g_state = State::RUNNING;
 	
-	    if(!initializeGame(&gameMemory, renderContext))
+	    if(!initializeGame(&memory, hwnd))
 	    {
 		printf("ERROR: Failed to initialze game\n");
 		g_state = State::QUIT;
@@ -460,23 +439,23 @@ int main(int argv, char** argc)
 	
 #ifdef VOIDSTORM_INTERNAL
 	    RecordingState rstate;
-	    if(!setupRecordingState(&gameMemory, &rstate))
+	    if(!setupRecordingState(&memory, &rstate))
 	    {
 		printf("ERROR: Failed to setup recording state\n");
 		g_state = State::QUIT;
 	    }
 #endif
 	    uint64_t frameCounter = 0;
-	    uint64_t prevTime = SDL_GetPerformanceCounter();
+	    uint64_t prevTime = getPerformanceCounter();
 	    while(g_state == State::RUNNING)
 	    {
 		TIME_BLOCK(Frame);
 
-		uint64_t currentTime = SDL_GetPerformanceCounter();
-		gameInput.dt = (float)((currentTime - prevTime) / (double)SDL_GetPerformanceFrequency());
+		uint64_t currentTime = getPerformanceCounter();
+		input.dt = (float)((currentTime - prevTime) / (double)getPerformanceFrequency());
 		prevTime = currentTime;
 
-		processPendingMessages(gameInput.currentKeyboard, &gameMemory, &rstate);
+		processPendingMessages(input.currentKeyboard, &memory, &rstate);
 
 		// Simple solution to query just the first controller
 		XINPUT_STATE controllerState;
@@ -484,15 +463,15 @@ int main(int argv, char** argc)
 		{
 		    XINPUT_GAMEPAD *pad = &controllerState.Gamepad;
 
-		    gameInput.currentController->leftStickX = processAxis(pad->sThumbLX, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
-		    gameInput.currentController->leftStickY = -processAxis(pad->sThumbLY, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
-		    gameInput.currentController->rightStickX = processAxis(pad->sThumbRX, XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE);
-		    gameInput.currentController->rightStickY = -processAxis(pad->sThumbRY, XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE);
+		    input.currentController->leftStickX = processAxis(pad->sThumbLX, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
+		    input.currentController->leftStickY = -processAxis(pad->sThumbLY, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
+		    input.currentController->rightStickX = processAxis(pad->sThumbRX, XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE);
+		    input.currentController->rightStickY = -processAxis(pad->sThumbRY, XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE);
 		    
-		    gameInput.currentController->A.isPressed = ((pad->wButtons & XINPUT_GAMEPAD_A) == XINPUT_GAMEPAD_A);
-		    gameInput.currentController->B.isPressed = ((pad->wButtons & XINPUT_GAMEPAD_B) == XINPUT_GAMEPAD_B);
-		    gameInput.currentController->X.isPressed = ((pad->wButtons & XINPUT_GAMEPAD_X) == XINPUT_GAMEPAD_X);
-		    gameInput.currentController->Y.isPressed = ((pad->wButtons & XINPUT_GAMEPAD_Y) == XINPUT_GAMEPAD_Y);
+		    input.currentController->A.isPressed = ((pad->wButtons & XINPUT_GAMEPAD_A) == XINPUT_GAMEPAD_A);
+		    input.currentController->B.isPressed = ((pad->wButtons & XINPUT_GAMEPAD_B) == XINPUT_GAMEPAD_B);
+		    input.currentController->X.isPressed = ((pad->wButtons & XINPUT_GAMEPAD_X) == XINPUT_GAMEPAD_X);
+		    input.currentController->Y.isPressed = ((pad->wButtons & XINPUT_GAMEPAD_Y) == XINPUT_GAMEPAD_Y);
 		}
 		else
 		{
@@ -500,34 +479,34 @@ int main(int argv, char** argc)
 		}
 
 #ifdef VOIDSTORM_INTERNAL	    
-		if(isKeyDownToReleased(&gameInput, 'Q'))
+		if(isKeyDownToReleased(&input, 'Q'))
 		{
-		    beginRecord(&gameMemory, &rstate);
+		    beginRecord(&memory, &rstate);
 		}	
 
-		if(isKeyDownToReleased(&gameInput, 'W'))
+		if(isKeyDownToReleased(&input, 'W'))
 		{
 		    endRecord(&rstate);
 		}	
 
-		if(isKeyDownToReleased(&gameInput, 'O'))
+		if(isKeyDownToReleased(&input, 'O'))
 		{
-		    beginPlayback(&gameMemory, &rstate);
+		    beginPlayback(&memory, &rstate);
 		}
 
-		if(isKeyDown(&gameInput, 'P'))
+		if(isKeyDown(&input, 'P'))
 		{
 		    endPlayback(&rstate);
 		}
 
 		if(rstate.isRecording)
 		{
-		    recordInput(&rstate, &gameInput);
+		    recordInput(&rstate, &input);
 		}
 
 		if(rstate.isPlayback)
 		{
-		    if(playbackInput(&gameMemory, &rstate, &gameInput))
+		    if(playbackInput(&memory, &rstate, &input))
 		    {
 			// This needs to be a callback into the game to decide what to do when
 			// a playback is completed.
@@ -551,17 +530,17 @@ int main(int argv, char** argc)
 #endif
 	
 		// Update game
-		updateGame(&gameMemory, &gameInput);
+		updateGame(&memory, &input);
 		
-		KeyboardState* ktemp = gameInput.currentKeyboard;
-		gameInput.currentKeyboard = gameInput.previousKeyboard;
-		gameInput.previousKeyboard = ktemp;
+		KeyboardState* ktemp = input.currentKeyboard;
+		input.currentKeyboard = input.previousKeyboard;
+		input.previousKeyboard = ktemp;
 
-		memcpy(gameInput.currentKeyboard->keys, gameInput.previousKeyboard->keys, sizeof(bool32) * VOIDSTORM_NUM_KEYS);
+		memcpy(input.currentKeyboard->keys, input.previousKeyboard->keys, sizeof(bool32) * VOIDSTORM_NUM_KEYS);
 		
-		ControllerState* temp = gameInput.currentController;
-		gameInput.currentController = gameInput.previousController;
-		gameInput.previousController = temp;
+		ControllerState* temp = input.currentController;
+		input.currentController = input.previousController;
+		input.previousController = temp;
 
 		frameCounter++;
 	    
@@ -569,11 +548,9 @@ int main(int argv, char** argc)
 
 	    endRecordingState(&rstate);
 
-	    shutdownGame(&gameMemory);
-	
-	    renderContext->~Context();
-	
-	    releaseMemory(&gameMemory);
+	    shutdownGame(&memory);
+
+	    releaseMemory(&memory);
 	}
 	else
 	{
@@ -606,6 +583,58 @@ ThreadProc(LPVOID lpParameter)
     }
 }
 
+bool
+getLastWriteTime(char *filename, FileTime *filetime)
+{
+    WIN32_FIND_DATA findData;
+    HANDLE handle = FindFirstFileA(filename, (LPWIN32_FIND_DATAA)&findData);
+    if(handle != INVALID_HANDLE_VALUE)
+    {
+	filetime->time = findData.ftLastWriteTime;
+	FindClose(handle);
+	return true;
+    }
+    
+    return false;
+}
+
+int
+compareFileTime(FileTime *a, FileTime *b)
+{
+    return CompareFileTime(&a->time, &b->time);
+}
+
+File
+readEntireFile(const char *filename)
+{
+    File result = {};
+    
+    HANDLE file = CreateFileA(filename, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
+    if(file != INVALID_HANDLE_VALUE)
+    {
+	LARGE_INTEGER size;
+	if(GetFileSizeEx(file, &size))
+	{
+	    assert(size.QuadPart < 0xFFFFFFFF);
+	    DWORD size32 = (DWORD)size.QuadPart;
+	    
+	    result.data = (uint8_t *)VirtualAlloc(0, size32, MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
+	    if(result.data)
+	    {
+		DWORD read;
+		if(ReadFile(file, result.data, size32, &read, 0))
+		{
+		    result.size = (size_t)size32;
+		}
+	    }
+	}
+	
+	CloseHandle(file);
+    }
+
+    return result;
+}
+
 void
 setupWorkQueue(WorkQueue *queue, uint32_t threadCount, WorkThreadContext *contexts)
 {
@@ -634,7 +663,7 @@ setupWorkQueue(WorkQueue *queue, uint32_t threadCount, WorkThreadContext *contex
 void
 addEntry(WorkQueue *queue, WorkQueueCallback *callback, void *data)
 {
-    // TODO (daniel): Add InterlockedCompareExchange so any thread can add.
+    // TODO (daniel): Add InterlockedCompareExchange so any thread can add
     uint32_t newNextEntryToWrite = (queue->nextEntryToWrite + 1) % ARRAYSIZE(queue->entries);
     assert(newNextEntryToWrite != queue->nextEntryToRead);
 
@@ -675,4 +704,23 @@ doNextEntry(WorkQueue *queue, WorkThreadContext *context)
     }
 
     return sleep;
+}
+
+
+uint64_t
+getPerformanceCounter()
+{
+    LARGE_INTEGER result;
+    QueryPerformanceCounter(&result);
+    return (uint64_t)result.QuadPart;
+}
+
+uint64_t
+getPerformanceFrequency()
+{
+    // TODO (daniel): This value dosen't change during runtime right?
+    // So we could store it as a global and return it here whenever its needed
+    LARGE_INTEGER result;
+    QueryPerformanceFrequency(&result);
+    return (uint64_t)result.QuadPart;
 }

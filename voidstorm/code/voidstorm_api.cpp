@@ -65,39 +65,6 @@ namespace api
 	LuaFile file;
 	const char* filename = lua_tostring(L, 1);
 	strcpy(file.name, filename);
-
-#ifdef ANDROID
-	SDL_RWops* handle = SDL_RWFromFile(filename, "r");
-	if(handle == 0)
-	{
-	    PRINT("Error open file %s. \n", filename);
-	}
-	else
-	{
-	    SDL_RWseek(handle, 0, SEEK_END);
-	    size_t size = (size_t)SDL_RWtell(handle); 
-	    SDL_RWseek(handle, 0, SEEK_SET);
-
-	    char* data = new char[size + 1];
-	    size_t bytes = SDL_RWread(handle, data, 1, size);
-	    if(bytes != size)
-	    {
-		PRINT("Error reading file %s. \n", filename);
-	    }
-	    else
-	    {
-		data[size] = '\0';
-		int error = luaL_dostring(L, data);
-		if(error != 0){
-		    PRINT("luaL_dostring: %s @ %s\n", filename, lua_tostring(L,-1));
-		    error = error;
-		}
-	    }
-
-	    delete[] data;
-	    SDL_RWclose(handle);
-	}
-#else	
 	strcpy(file.path, VOIDSTORM_SCRIPT_DIRECTORY);
 	strcat(file.path, file.name);
   
@@ -129,7 +96,7 @@ namespace api
 		g_luaFiles->push_back(file);
 	}
 #endif
-#endif
+//#endif
 	return result;
     }
 
