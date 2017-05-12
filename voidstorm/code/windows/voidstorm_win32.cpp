@@ -379,7 +379,7 @@ WinMain(HINSTANCE instance, HINSTANCE prevInstance, LPSTR cmd, int show)
 
     if(RegisterClassA(&windowClass))
     {
-	RECT windowRect = { 0, 0, static_cast<LONG>(1280), static_cast<LONG>(720) };
+	RECT windowRect = { 0, 0, 1280, 720 };
 	AdjustWindowRect(&windowRect, WS_OVERLAPPEDWINDOW, FALSE);
 	
         HWND hwnd = CreateWindowExA(
